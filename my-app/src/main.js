@@ -549,7 +549,92 @@ function updateFileList(){
   fileListItems.innerHTML=pendingFiles.map(f=>`<li><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 1h5l3 3v7a1 1 0 01-1 1H2a1 1 0 01-1-1V2a1 1 0 011-1z" stroke="currentColor" stroke-width="1"/><path d="M7 1v3h3" stroke="currentColor" stroke-width="1"/></svg>${f.webkitRelativePath||f.name}</li>`).join('');
 }
 clearFiles.addEventListener('click',()=>{pendingFiles=[];fileInput.value='';updateFileList()});
-confirmUpload.addEventListener('click',()=>{loadFileTree(SAMPLE_FILE_TREE);closeModal()});
+confirmUpload.addEventListener('click', async () => {
+  if (pendingFiles.length === 0) return;
+
+  // Build FormData with all files
+  const formData = new FormData();
+  pendingFiles.forEach(f => formData.append('files', f));
+
+  // Update UI to show progress
+  confirmUpload.disabled = true;
+  confirmUpload.textContent = 'Indexing...';
+
+  try {
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      console.log('✅ Upload complete:', data.stats);
+      // Build file tree from uploaded files
+      const tree = buildFileTree(pendingFiles.map(f => f.webkitRelativePath || f.name));
+      loadFileTree(tree);
+      closeModal();
+    } else {
+      alert('Upload failed: ' + (data.error || 'Unknown error'));
+    }
+  } catch (err) {
+    alert('Upload failed: ' + err.message + '. Is the backend running?');
+  } finally {
+    confirmUpload.disabled = false;
+    confirmUpload.textContent = 'Upload Files';
+  }
+});
+
+// Build a file tree structure from flat file paths
+function buildFileTree(paths) {
+  const root = [];
+  
+  paths.forEach(p => {
+    const parts = p.split('/').filter(Boolean);
+    let currentLevel = root;
+    
+    parts.forEach((part, i) => {
+      const isFile = i === parts.length - 1;
+      
+      let existingNode = currentLevel.find(n => n.name === part);
+      
+      if (!existingNode) {
+        existingNode = {
+          name: part,
+          type: isFile ? 'file' : 'folder',
+          expanded: false
+        };
+        if (!isFile) {
+          existingNode.children = [];
+        }
+        currentLevel.push(existingNode);
+      }
+      
+      if (!isFile) {
+        currentLevel = existingNode.children;
+      }
+    });
+  });
+  
+  // Sort: folders first, then alphabetically
+  function sortTree(nodes) {
+    nodes.sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+    nodes.forEach(n => {
+      if (n.children) sortTree(n.children);
+    });
+  }
+  sortTree(root);
+  
+  // Expand root level by default
+  root.forEach(n => {
+    if (n.type === 'folder') n.expanded = true;
+  });
+  
+  return root;
+}
 
 // ═══ Drag & Drop ═══
 let dragCounter=0;
@@ -622,12 +707,60 @@ sendBtn.addEventListener('click',()=>{if(chatInput.value.trim())sendMessage(chat
 attachBtn.addEventListener('click',openModal);
 chatSuggestions.addEventListener('click',(e)=>{const btn=e.target.closest('.chat__suggestion');if(btn)sendMessage(btn.dataset.question)});
 
-function sendMessage(text){
+async function sendMessage(text){
+  // Hide welcome + landing sections when chat starts
   if(chatWelcome)chatWelcome.style.display='none';
+  const landing=document.getElementById('landingSections');
+  if(landing)landing.style.display='none';
+
   appendMessage('user',text);
   chatInput.value='';chatInput.style.height='auto';sendBtn.disabled=true;
   const typing=showTyping();
-  setTimeout(()=>{removeTyping(typing);const r=MOCK_RESPONSES[text]||DEFAULT_RESPONSE;appendMessage('ai',r.text);if(r.snippets&&r.snippets.length)showContextSnippets(r.snippets);scrollToBottom()},1200+Math.random()*1500);
+
+  try {
+    // Call the real backend API
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: text }),
+    });
+
+    removeTyping(typing);
+
+    if (!res.ok) {
+      const err = await res.json();
+      appendMessage('ai', `<p>⚠️ ${err.error || 'Something went wrong. Upload a codebase first.'}</p>`);
+      scrollToBottom();
+      return;
+    }
+
+    const data = await res.json();
+    appendMessage('ai', formatAIResponse(data.answer));
+
+    // Show source code snippets in the context panel
+    if (data.sources && data.sources.length) {
+      showContextSnippets(data.sources.map(s => ({
+        file: s.file,
+        lines: `L${s.startLine}-${s.endLine}`,
+        code: s.preview,
+        relevance: `${(s.score * 100).toFixed(0)}%`,
+      })));
+    }
+    scrollToBottom();
+  } catch (err) {
+    removeTyping(typing);
+    appendMessage('ai', `<p>❌ Network error: ${err.message}. Is the backend running? (<code>npm run server</code>)</p>`);
+    scrollToBottom();
+  }
+}
+
+// Format AI markdown-like response to HTML
+function formatAIResponse(text) {
+  return text
+    .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br/>');
 }
 
 function appendMessage(role,content){
