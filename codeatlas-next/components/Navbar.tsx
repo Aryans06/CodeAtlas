@@ -16,8 +16,8 @@ export default function Navbar({ theme, onToggleTheme, onUploadClick, indexingMs
           <svg className="navbar__logo-icon" viewBox="0 0 32 32" fill="none">
             <defs>
               <linearGradient id="logo-grad" x1="0" y1="0" x2="32" y2="32">
-                <stop offset="0%" stopColor="#6C5CE7" />
-                <stop offset="100%" stopColor="#00CEFF" />
+                <stop offset="0%" stopColor="#ef4444" />
+                <stop offset="100%" stopColor="#7f1d1d" />
               </linearGradient>
             </defs>
             <rect width="32" height="32" rx="8" fill="url(#logo-grad)" />

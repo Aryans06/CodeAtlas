@@ -62,25 +62,22 @@ export default function ChatPanel({ messages, isLoading, onSendMessage, hasCodeb
         <div className="chat__messages" id="chatMessages">
           {showWelcome && (
             <div className="chat__welcome" id="chatWelcome">
-              <div className="chat__welcome-glow" />
-              <div className="chat__welcome-icon">
-                <div className="icon-glow" />
-                <svg viewBox="0 0 64 64" fill="none" width="72" height="72">
-                  <defs>
-                    <linearGradient id="welcome-grad" x1="0" y1="0" x2="64" y2="64">
-                      <stop offset="0%" stopColor="#6C5CE7" />
-                      <stop offset="100%" stopColor="#00CEFF" />
-                    </linearGradient>
-                  </defs>
-                  <rect width="64" height="64" rx="16" fill="url(#welcome-grad)" opacity="0.15" />
-                  <path d="M20 22L32 16L44 22V42L32 48L20 42V22Z" stroke="url(#welcome-grad)" strokeWidth="2" fill="none" />
-                  <path d="M32 16V48" stroke="url(#welcome-grad)" strokeWidth="1.5" opacity="0.4" />
-                </svg>
+              <div className="chat__welcome-glow" style={{ background: 'radial-gradient(circle, rgba(239, 68, 68, 0.15) 0%, transparent 60%)' }} />
+              <div className="hero-visual">
+                <div className="hero-visual__glow" />
+                <div className="hero-visual__inner">
+                  <div className="hero-visual__scanner" />
+                  <div className="hero-visual__line" style={{ width: '70%' }} />
+                  <div className="hero-visual__line" style={{ width: '40%' }} />
+                  <div className="hero-visual__line" style={{ width: '90%' }} />
+                  <div className="hero-visual__line" style={{ width: '50%' }} />
+                  <div className="hero-visual__line" style={{ width: '80%' }} />
+                </div>
               </div>
               <p className="chat__welcome-tag">AI-Powered Codebase Intelligence</p>
               <h1 className="chat__welcome-title">
                 Understand any codebase.<br />
-                <span className="gradient-text shimmer-text">Instantly.</span>
+                <span style={{ background: 'linear-gradient(135deg, #ef4444, #7f1d1d)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Instantly.</span>
               </h1>
               <p className="chat__welcome-subtitle">
                 Drop your code. Ask questions. Get context-aware answers grounded in your actual source files.

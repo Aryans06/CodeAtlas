@@ -1,18 +1,16 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-let model: ReturnType<GoogleGenerativeAI['getGenerativeModel']> | null = null;
+const apiKey = process.env.GEMINI_API_KEY;
+const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
-export function initAI(apiKey: string) {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    generationConfig: {
-      maxOutputTokens: 1500,
-      temperature: 0.3,
-    },
-  });
-  console.log('🤖 Gemini AI initialized (gemini-2.0-flash)');
-}
+export const model = genAI ? genAI.getGenerativeModel({
+  model: 'gemini-2.0-flash',
+  generationConfig: {
+    maxOutputTokens: 1500,
+    temperature: 0.3,
+  },
+}) : null;
+
 
 interface SearchResult {
   chunk: { content: string; metadata: { file: string; startLine: number; endLine: number } };

@@ -6,7 +6,7 @@ export default function AmbientBackground() {
 
   useEffect(() => {
     if (!orbsRef.current) return;
-    const colors = ['rgba(108,92,231,0.18)', 'rgba(0,206,255,0.14)', 'rgba(253,121,168,0.12)'];
+    const colors = ['rgba(239, 68, 68, 0.12)', 'rgba(185, 28, 28, 0.1)', 'rgba(127, 29, 29, 0.12)'];
     for (let i = 0; i < 5; i++) {
       const orb = document.createElement('div');
       const size = 200 + Math.random() * 300;

@@ -1,18 +1,14 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-let genAI: GoogleGenerativeAI | null = null;
-
-export function initEmbedder(apiKey: string) {
-  genAI = new GoogleGenerativeAI(apiKey);
-  console.log('🔗 Gemini embedder initialized');
-}
+const apiKey = process.env.GEMINI_API_KEY;
+export const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
 // Embed a single text → returns number[]
 export async function embedText(text: string): Promise<number[]> {
-  if (!genAI) throw new Error('Embedder not initialized');
+  if (!genAI) throw new Error('Embedder not initialized (missing GEMINI_API_KEY)');
 
   // Use 'embedding-001' — universally available across all Gemini API keys
-  const model = genAI.getGenerativeModel({ model: 'gemini-embedding-001' });
+  const model = genAI.getGenerativeModel({ model: 'embedding-001' });
 
   // Truncate to ~8000 chars to stay within token limits
   const truncated = text.length > 8000 ? text.slice(0, 8000) : text;

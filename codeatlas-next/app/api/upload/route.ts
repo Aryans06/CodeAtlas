@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { chunkCodebase } from '@/lib/chunker';
-import { initEmbedder, embedBatch } from '@/lib/embedder';
+import { embedBatch } from '@/lib/embedder';
 import { vectorStore } from '@/lib/vectorStore';
-import { initAI } from '@/lib/ai';
 import { indexingState } from '@/lib/state';
 
-// Initialize Gemini services
-const apiKey = process.env.GEMINI_API_KEY!;
-initEmbedder(apiKey);
-initAI(apiKey);
+// Initialize Gemini services automatically via lib imports
 
 export async function POST(req: NextRequest) {
   try {
