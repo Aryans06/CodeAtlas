@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CodeAtlas — AI-Powered Codebase Assistant</title>
+  <meta name="description" content="Upload your codebase and ask questions with AI-powered insights. CodeAtlas helps you understand, navigate, and document any codebase instantly." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/styles/main.css" />
+</head>
+<body>
+  <!-- Ambient Background -->
+  <div class="ambient-bg" id="ambientBg">
+    <div class="ambient-bg__mesh"></div>
+    <div class="ambient-bg__orbs" id="ambientOrbs"></div>
+  </div>
+
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <div class="navbar__left">
+      <div class="navbar__logo" id="logo">
+        <svg class="navbar__logo-icon" viewBox="0 0 32 32" fill="none"><defs><linearGradient id="logo-grad" x1="0" y1="0" x2="32" y2="32"><stop offset="0%" stop-color="#6C5CE7"/><stop offset="100%" stop-color="#00CEFF"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#logo-grad)"/><path d="M10 11L16 8L22 11V21L16 24L10 21V11Z" stroke="white" stroke-width="1.5" fill="none"/><path d="M16 8V24" stroke="white" stroke-width="1.2" opacity="0.5"/><path d="M10 11L22 21" stroke="white" stroke-width="1.2" opacity="0.3"/><path d="M22 11L10 21" stroke="white" stroke-width="1.2" opacity="0.3"/></svg>
+        <span class="navbar__logo-text">Code<span class="navbar__logo-accent">Atlas</span></span>
+        <span class="navbar__badge">AI</span>
+      </div>
+      <span class="navbar__tagline">Navigate code, not confusion.</span>
+    </div>
+    <div class="navbar__right">
+      <button class="btn btn--primary" id="uploadBtn">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1V11M8 1L4 5M8 1L12 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 11V13C1 14.1 1.9 15 3 15H13C14.1 15 15 14.1 15 13V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Upload Codebase
+      </button>
+      <button class="btn btn--ghost" id="themeToggle" aria-label="Toggle theme">
+        <svg class="theme-icon theme-icon--dark" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg class="theme-icon theme-icon--light" width="18" height="18" viewBox="0 0 24 24" fill="none" style="display:none"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </nav>
+
+  <!-- MAIN LAYOUT -->
+  <main class="app" id="app">
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar__header">
+        <h2 class="sidebar__title"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 3C2 2.44772 2.44772 2 3 2H6.17C6.44 2 6.69 2.11 6.88 2.29L7.71 3.12C7.89 3.31 8.15 3.41 8.41 3.41H13C13.55 3.41 14 3.86 14 4.41V13C14 13.55 13.55 14 13 14H3C2.45 14 2 13.55 2 13V3Z" stroke="currentColor" stroke-width="1.3"/></svg> Explorer</h2>
+        <button class="sidebar__collapse-btn" id="sidebarToggle" aria-label="Collapse sidebar"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 3L5 7L9 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+      <div class="sidebar__empty" id="sidebarEmpty">
+        <div class="sidebar__empty-icon"><svg width="48" height="48" viewBox="0 0 48 48" fill="none"><rect x="8" y="6" width="32" height="36" rx="4" stroke="currentColor" stroke-width="1.5" opacity="0.3"/><path d="M16 18H32M16 24H28M16 30H24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/><circle cx="36" cy="36" r="10" fill="var(--accent)" opacity="0.15"/><path d="M33 36H39M36 33V39" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+        <p class="sidebar__empty-text">No codebase loaded</p>
+        <p class="sidebar__empty-hint">Upload files or drag & drop a folder</p>
+      </div>
+      <div class="sidebar__tree" id="fileTree" style="display:none"></div>
+    </aside>
+
+    <!-- CENTER: Single scrollable page -->
+    <section class="chat" id="chatPanel">
+      <div class="chat__view" id="chatView">
+        <div class="chat__messages" id="chatMessages">
+          <!-- Welcome Hero -->
+          <div class="chat__welcome" id="chatWelcome">
+            <div class="chat__welcome-glow"></div>
+            <div class="chat__welcome-icon">
+              <div class="icon-glow"></div>
+              <svg viewBox="0 0 64 64" fill="none" width="72" height="72"><defs><linearGradient id="welcome-grad" x1="0" y1="0" x2="64" y2="64"><stop offset="0%" stop-color="#6C5CE7"/><stop offset="100%" stop-color="#00CEFF"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#welcome-grad)" opacity="0.15"/><path d="M20 22L32 16L44 22V42L32 48L20 42V22Z" stroke="url(#welcome-grad)" stroke-width="2" fill="none"/><path d="M32 16V48" stroke="url(#welcome-grad)" stroke-width="1.5" opacity="0.4"/></svg>
+            </div>
+            <p class="chat__welcome-tag anim-hero" style="--delay:0s">AI-Powered Codebase Intelligence</p>
+            <h1 class="chat__welcome-title anim-hero" style="--delay:0.15s">Understand any codebase.<br/><span class="gradient-text shimmer-text">Instantly.</span></h1>
+            <p class="chat__welcome-subtitle anim-hero" style="--delay:0.3s">Drop your code. Ask questions. Get context-aware answers grounded in your actual source files.</p>
+            <div class="chat__suggestions" id="chatSuggestions">
+              <button class="chat__suggestion" data-question="Where is authentication handled?"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v4M7 9v4M1 7h4M9 7h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>Where is authentication handled?</button>
+              <button class="chat__suggestion" data-question="Explain the project structure"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2h4v4H2zM8 2h4v4H8zM2 8h4v4H2zM8 8h4v4H8z" stroke="currentColor" stroke-width="1.1"/></svg>Explain the project structure</button>
+              <button class="chat__suggestion" data-question="Find all API endpoints"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.1"/><path d="M7 4v3l2 2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>Find all API endpoints</button>
+              <button class="chat__suggestion" data-question="Explain this file"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 1.5h5.5L12 5v7.5a1 1 0 01-1 1H3a1 1 0 01-1-1v-11a1 1 0 011-1z" stroke="currentColor" stroke-width="1.1"/><path d="M8.5 1.5V5H12" stroke="currentColor" stroke-width="1.1"/></svg>Explain this file</button>
+            </div>
+          </div>
+
+          <!-- ALL SECTIONS INLINE -->
+          <div class="landing-sections" id="landingSections">
+
+            <!-- How It Works -->
+            <section class="section how-section anim-reveal">
+              <span class="section__badge">Architecture</span>
+              <h2 class="section__title">How <span class="gradient-text">CodeAtlas</span> Works</h2>
+              <p class="section__subtitle">An intelligent pipeline that transforms codebases into queryable knowledge using semantic embeddings and AI-driven reasoning.</p>
+              <div class="how__steps">
+                <div class="how__step anim-reveal"><div class="how__step-number">01</div><div class="how__step-image"><img src="/images/step-indexing.png" alt="Codebase Indexing" /></div><div class="how__step-content"><h3>Codebase Indexing</h3><p>Your codebase is parsed into logical units — functions, classes, and code blocks. Each is converted into an <strong>embedding vector</strong> that captures its semantic meaning.</p></div></div>
+                <div class="how__step how__step--reverse anim-reveal"><div class="how__step-number">02</div><div class="how__step-image"><img src="/images/step-search.png" alt="Semantic Search" /></div><div class="how__step-content"><h3>Semantic Search</h3><p>Your question is converted into an embedding and compared against stored representations. A <strong>similarity search</strong> retrieves the most relevant code by meaning.</p></div></div>
+                <div class="how__step anim-reveal"><div class="how__step-number">03</div><div class="how__step-image"><img src="/images/step-response.png" alt="AI Response" /></div><div class="how__step-content"><h3>AI-Powered Response</h3><p>Retrieved code is fed to an AI model that generates <strong>coherent, context-aware answers</strong> — explaining functionality and tracing logic across your code.</p></div></div>
+              </div>
+              <div class="how__flow anim-reveal">
+                <h3>The Pipeline</h3>
+                <div class="how__flow-diagram">
+                  <div class="how__flow-node"><span class="how__flow-icon">📁</span><span>Upload</span></div><div class="how__flow-arrow">→</div>
+                  <div class="how__flow-node"><span class="how__flow-icon">🧩</span><span>Parse</span></div><div class="how__flow-arrow">→</div>
+                  <div class="how__flow-node"><span class="how__flow-icon">🔢</span><span>Embed</span></div><div class="how__flow-arrow">→</div>
+                  <div class="how__flow-node"><span class="how__flow-icon">🔍</span><span>Search</span></div><div class="how__flow-arrow">→</div>
+                  <div class="how__flow-node how__flow-node--accent"><span class="how__flow-icon">🤖</span><span>Answer</span></div>
+                </div>
+              </div>
+            </section>
+
+            <!-- How to Use -->
+            <section class="section howuse anim-reveal">
+              <h2 class="howuse__title">Get Started in 3 Steps</h2>
+              <div class="howuse__steps">
+                <div class="howuse__step"><div class="howuse__step-num">1</div><h4>Upload Your Codebase</h4><p>Click <strong>Upload Codebase</strong> or drag and drop your project folder.</p></div>
+                <div class="howuse__step"><div class="howuse__step-num">2</div><h4>Ask Any Question</h4><p>Type natural language questions like <em>Where is auth handled?</em></p></div>
+                <div class="howuse__step"><div class="howuse__step-num">3</div><h4>Get Contextual Answers</h4><p>CodeAtlas generates precise explanations with clickable file references.</p></div>
+              </div>
+            </section>
+
+            <!-- Features -->
+            <section class="section features anim-reveal" id="featuresSection">
+              <span class="section__badge">Features</span>
+              <h2 class="section__title">Everything you need to<br/><span class="gradient-text">understand code faster</span></h2>
+              <div class="features__grid">
+                <div class="feature-card"><div class="feature-card__icon">🔍</div><h4>Semantic Search</h4><p>Find code by meaning, not keywords.</p></div>
+                <div class="feature-card"><div class="feature-card__icon">🧠</div><h4>Context-Aware Answers</h4><p>Responses grounded in your actual code with file references.</p></div>
+                <div class="feature-card"><div class="feature-card__icon">⚡</div><h4>Instant Onboarding</h4><p>Understand architecture, patterns, and conventions in minutes.</p></div>
+                <div class="feature-card"><div class="feature-card__icon">🔗</div><h4>Cross-File Tracing</h4><p>Trace logic across files and modules.</p></div>
+                <div class="feature-card"><div class="feature-card__icon">🛡️</div><h4>Security Analysis</h4><p>Identify vulnerabilities and insecure patterns.</p></div>
+                <div class="feature-card"><div class="feature-card__icon">📊</div><h4>Architecture Insights</h4><p>High-level structure and dependency overviews.</p></div>
+              </div>
+            </section>
+
+            <!-- Live Demo -->
+            <section class="section demo anim-reveal" id="demoSection">
+              <span class="section__badge">Live Demo</span>
+              <h2 class="section__title">See it in action</h2>
+              <div class="demo__container">
+                <div class="demo__chat">
+                  <div class="demo__chat-header"><span class="demo__dot red"></span><span class="demo__dot yellow"></span><span class="demo__dot green"></span><span class="demo__chat-label">CodeAtlas Chat</span></div>
+                  <div class="demo__chat-body">
+                    <div class="demo__msg demo__msg--user"><span>Where is the JWT token validated?</span></div>
+                    <div class="demo__msg demo__msg--ai"><span>JWT is validated in <code>src/middleware/auth.js</code> at line 14 using <code>jwt.verify()</code>.</span></div>
+                  </div>
+                </div>
+                <div class="demo__code">
+                  <div class="demo__code-header"><span class="demo__dot red"></span><span class="demo__dot yellow"></span><span class="demo__dot green"></span><span class="demo__code-label">src/middleware/auth.js</span></div>
+                  <pre class="demo__code-body"><span class="line-dim">12</span>  <span class="kw">const</span> <span class="fn">authenticate</span> = (req, res, next) => {
+<span class="line-dim">13</span>    <span class="kw">const</span> token = req.headers.authorization?.<span class="fn">split</span>(<span class="str">' '</span>)[<span class="num">1</span>];
+<span class="line-hl">15</span>    <span class="kw">const</span> decoded = jwt.<span class="fn">verify</span>(token, secret);
+<span class="line-dim">16</span>    req.user = decoded;
+<span class="line-dim">17</span>    <span class="fn">next</span>();
+<span class="line-dim">18</span>  };</pre>
+                </div>
+              </div>
+            </section>
+
+            <!-- Use Cases -->
+            <section class="section usecases anim-reveal" id="usecasesSection">
+              <span class="section__badge">Use Cases</span>
+              <h2 class="section__title">Built for real-world workflows</h2>
+              <div class="usecases__grid">
+                <div class="usecase-card"><div class="usecase-card__icon">🐛</div><h4>Debugging</h4><p>Trace bugs across files by asking natural questions.</p></div>
+                <div class="usecase-card"><div class="usecase-card__icon">🚀</div><h4>Developer Onboarding</h4><p>Understand codebases in hours instead of weeks.</p></div>
+                <div class="usecase-card"><div class="usecase-card__icon">📜</div><h4>Legacy Code</h4><p>Navigate undocumented systems confidently.</p></div>
+                <div class="usecase-card"><div class="usecase-card__icon">✅</div><h4>Code Reviews</h4><p>Understand PR context and impact faster.</p></div>
+              </div>
+            </section>
+
+            <!-- Before vs After -->
+            <section class="section compare anim-reveal" id="compareSection">
+              <span class="section__badge">Why CodeAtlas</span>
+              <h2 class="section__title">Before vs After</h2>
+              <div class="compare__grid">
+                <div class="compare__col compare__col--before">
+                  <h4 class="compare__label">❌ Without CodeAtlas</h4>
+                  <ul><li>Grep through thousands of files manually</li><li>Read outdated documentation</li><li>Ask teammates and wait</li><li>Spend days on new codebases</li><li>Miss hidden dependencies</li></ul>
+                </div>
+                <div class="compare__col compare__col--after">
+                  <h4 class="compare__label">✅ With CodeAtlas</h4>
+                  <ul><li>Natural language questions, instant answers</li><li>Always up-to-date — reads your code</li><li>Self-serve context with file refs</li><li>Understand any codebase in minutes</li><li>Full cross-file tracing</li></ul>
+                </div>
+              </div>
+            </section>
+
+            <!-- Footer -->
+            <footer class="site-footer">
+              <div class="footer__top">
+                <div class="footer__brand">
+                  <div class="footer__logo"><svg viewBox="0 0 32 32" fill="none" width="24" height="24"><defs><linearGradient id="f-grad" x1="0" y1="0" x2="32" y2="32"><stop offset="0%" stop-color="#6C5CE7"/><stop offset="100%" stop-color="#00CEFF"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#f-grad)"/><path d="M10 11L16 8L22 11V21L16 24L10 21V11Z" stroke="white" stroke-width="1.5" fill="none"/></svg><span>Code<span class="gradient-text">Atlas</span></span></div>
+                  <p>AI-powered codebase understanding. Navigate code, not confusion.</p>
+                </div>
+                <div class="footer__links">
+                  <div class="footer__col"><h5>Product</h5><a href="#">Features</a><a href="#">Pricing</a><a href="#">Changelog</a><a href="#">Docs</a></div>
+                  <div class="footer__col"><h5>Company</h5><a href="#">About</a><a href="#">Blog</a><a href="#">Careers</a><a href="#">Contact</a></div>
+                  <div class="footer__col"><h5>Legal</h5><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Security</a></div>
+                </div>
+              </div>
+              <div class="footer__bottom"><span>© 2025 CodeAtlas. All rights reserved.</span><span>Built with ❤️ for developers</span></div>
+            </footer>
+
+          </div><!-- /landing-sections -->
+        </div>
+        <div class="chat__input-wrapper" id="chatInputWrapper">
+          <div class="chat__input-container">
+            <button class="chat__attach-btn" id="attachBtn" aria-label="Attach file"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M14 7.5L8.12 13.38a3.5 3.5 0 01-4.95-4.95L9.05 2.55a2.33 2.33 0 013.3 3.3L6.5 11.7a1.17 1.17 0 01-1.65-1.65L10.2 4.7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <textarea class="chat__input" id="chatInput" placeholder="Ask anything about your codebase..." rows="1"></textarea>
+            <button class="chat__send-btn" id="sendBtn" aria-label="Send message" disabled><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M14 2L7 9M14 2L10 14L7 9M14 2L2 6L7 9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          </div>
+          <p class="chat__disclaimer">CodeAtlas may produce inaccurate responses. Always verify critical information.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: Context / File Preview -->
+    <aside class="context" id="contextPanel">
+      <div class="context__header">
+        <h2 class="context__title"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 3H14M2 8H14M2 13H10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> <span id="contextTitleText">Context</span></h2>
+        <button class="context__close-btn" id="contextClose" aria-label="Close context panel"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3L11 11M11 3L3 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="context__empty" id="contextEmpty"><svg width="40" height="40" viewBox="0 0 40 40" fill="none"><rect x="4" y="4" width="32" height="32" rx="4" stroke="currentColor" stroke-width="1.2" opacity="0.2"/><path d="M12 14H28M12 20H24M12 26H20" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.2"/></svg><p>Click a file or ask a question to see context</p></div>
+      <div class="context__snippets" id="contextSnippets" style="display:none"></div>
+      <div class="file-preview" id="filePreview" style="display:none">
+        <div class="file-preview__info">
+          <span class="file-preview__path" id="previewPath"></span>
+          <span class="file-preview__size" id="previewSize"></span>
+        </div>
+        <div class="file-preview__code" id="previewCode"></div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- UPLOAD MODAL -->
+  <div class="modal-overlay" id="uploadModal" style="display:none">
+    <div class="modal">
+      <div class="modal__header"><h2 class="modal__title">Upload Codebase</h2><button class="modal__close" id="modalClose" aria-label="Close modal"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></div>
+      <div class="modal__body">
+        <div class="dropzone" id="dropzone">
+          <div class="dropzone__icon"><svg width="48" height="48" viewBox="0 0 48 48" fill="none"><path d="M24 32V16M24 16L18 22M24 16L30 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 32V38C8 40.2 9.8 42 12 42H36C38.2 42 40 40.2 40 38V32" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <p class="dropzone__text">Drag & drop files here</p>
+          <p class="dropzone__hint">or click to browse</p>
+          <input type="file" id="fileInput" multiple webkitdirectory style="display:none" />
+        </div>
+        <div class="dropzone__file-list" id="fileList" style="display:none"><div class="dropzone__file-list-header"><span id="fileCount">0 files selected</span><button class="btn btn--sm btn--ghost" id="clearFiles">Clear all</button></div><ul id="fileListItems"></ul></div>
+      </div>
+      <div class="modal__footer"><button class="btn btn--ghost" id="cancelUpload">Cancel</button><button class="btn btn--primary" id="confirmUpload" disabled><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7L6 11L12 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Upload Files</button></div>
+    </div>
+  </div>
+
+  <!-- DRAG OVERLAY -->
+  <div class="drag-overlay" id="dragOverlay" style="display:none">
+    <div class="drag-overlay__content"><svg width="64" height="64" viewBox="0 0 64 64" fill="none"><path d="M32 44V20M32 20L22 30M32 20L42 30" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="8" y="8" width="48" height="48" rx="12" stroke="currentColor" stroke-width="2" stroke-dasharray="6 4"/></svg><p>Drop files to upload</p></div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
