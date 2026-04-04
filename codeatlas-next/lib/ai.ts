@@ -1,16 +1,15 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 
-const apiKey = process.env.GEMINI_API_KEY;
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
+let groq: Groq | null = null;
 
-export const model = genAI ? genAI.getGenerativeModel({
-  model: 'gemini-2.0-flash',
-  generationConfig: {
-    maxOutputTokens: 1500,
-    temperature: 0.3,
-  },
-}) : null;
+export function initAI(apiKey: string) {
+  groq = new Groq({ apiKey });
+  console.log('🤖 Groq AI initialized (llama3-70b-8192)');
+}
 
+export function isAIReady(): boolean {
+  return groq !== null;
+}
 
 interface SearchResult {
   chunk: { content: string; metadata: { file: string; startLine: number; endLine: number } };
@@ -19,39 +18,43 @@ interface SearchResult {
 
 interface AIResponse {
   text: string;
-  sources: {
-    file: string;
-    startLine: number;
-    endLine: number;
-    score: number;
-    preview: string;
-  }[];
+  sources: { file: string; startLine: number; endLine: number; score: number; preview: string }[];
 }
 
 export async function generateResponse(
   question: string,
   relevantChunks: SearchResult[]
 ): Promise<AIResponse> {
-  if (!model) throw new Error('AI not initialized');
+  if (!groq) throw new Error('AI not initialized');
 
   const context = relevantChunks
     .map(r => {
       const m = r.chunk.metadata;
-      return `--- File: ${m.file} (lines ${m.startLine}-${m.endLine}) [${(r.score * 100).toFixed(1)}% relevant] ---\n${r.chunk.content}`;
+      return `--- File: ${m.file} (lines ${m.startLine}-${m.endLine}) ---\n${r.chunk.content}`;
     })
     .join('\n\n');
 
-  const prompt = `You are CodeAtlas AI, an expert code analysis assistant.
-Answer ONLY based on the code context provided below. Reference specific file names and line numbers.
-Format code references as: \`filename.js:L12-L45\`
+  // Llama 3.3 70B runs at blazing fast speeds on Groq
+  const chatCompletion = await groq.chat.completions.create({
+    messages: [
+      {
+        role: "system",
+        content: `You are CodeAtlas, a blazing fast AI codebase search tool.
+Read the CODE CONTEXT below and answer the user's question completely.
+If you know the exact file name and line numbers from the context, YOU MUST reference them like this: \`filename.js:L2-L4\`.
+If the answer is missing from context, do not try to guess.`
+      },
+      {
+        role: "user",
+        content: `CODE CONTEXT:\n${context}\n\nUSER QUESTION: ${question}`
+      }
+    ],
+    model: "llama-3.3-70b-versatile",
+    temperature: 0.2,
+    max_tokens: 1500,
+  });
 
-CODE CONTEXT:
-${context}
-
-USER QUESTION: ${question}`;
-
-  const result = await model.generateContent(prompt);
-  const text = result.response.text();
+  const text = chatCompletion.choices[0]?.message?.content || 'No response generated.';
 
   return {
     text,

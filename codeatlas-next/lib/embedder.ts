@@ -1,23 +1,32 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { HfInference } from '@huggingface/inference';
 
-const apiKey = process.env.GEMINI_API_KEY;
-export const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
+let hf: HfInference | null = null;
+
+export function initEmbedder(apiKey: string) {
+  hf = new HfInference(apiKey);
+  console.log('🔗 HuggingFace embedder initialized');
+}
+
+export function isEmbedderReady(): boolean {
+  return hf !== null;
+}
 
 // Embed a single text → returns number[]
 export async function embedText(text: string): Promise<number[]> {
-  if (!genAI) throw new Error('Embedder not initialized (missing GEMINI_API_KEY)');
+  if (!hf) throw new Error('Embedder not initialized');
 
-  // Use 'embedding-001' — universally available across all Gemini API keys
-  const model = genAI.getGenerativeModel({ model: 'embedding-001' });
-
-  // Truncate to ~8000 chars to stay within token limits
   const truncated = text.length > 8000 ? text.slice(0, 8000) : text;
 
-  const result = await model.embedContent(truncated);
-  return result.embedding.values as number[];
+  // We use a high-quality free embedding model hosted on HuggingFace
+  const response = await hf.featureExtraction({
+    model: 'sentence-transformers/all-MiniLM-L6-v2',
+    inputs: truncated,
+  });
+
+  return response as number[];
 }
 
-// Embed multiple texts sequentially (rate-limit safe)
+// Embed multiple texts sequentially
 export async function embedBatch(
   texts: string[],
   onProgress?: (done: number, total: number) => void
@@ -28,13 +37,14 @@ export async function embedBatch(
     try {
       const embedding = await embedText(texts[i]);
       results.push({ index: i, embedding });
-      onProgress?.(i + 1, texts.length);
     } catch (err: any) {
       console.error(`⚠️ Failed to embed chunk ${i}: ${err.message}`);
       results.push({ index: i, embedding: null });
     }
-    // 100ms delay to stay well under rate limits
-    if (i < texts.length - 1) await sleep(100);
+    
+    // Slight delay to be polite to HF free tier
+    if (i < texts.length - 1) await sleep(200);
+    onProgress?.(i + 1, texts.length);
   }
 
   console.log(`✅ Embedded ${results.filter(r => r.embedding).length}/${texts.length} chunks`);

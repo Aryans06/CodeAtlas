@@ -1,37 +1,81 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { chunkCodebase } from '@/lib/chunker';
-import { embedBatch } from '@/lib/embedder';
+import { initEmbedder, embedBatch } from '@/lib/embedder';
 import { vectorStore } from '@/lib/vectorStore';
+import { initAI } from '@/lib/ai';
 import { indexingState } from '@/lib/state';
 
-// Initialize Gemini services automatically via lib imports
+// Max total size across all uploaded files (in bytes) = 50MB
+const MAX_TOTAL_SIZE = 50 * 1024 * 1024;
+// Max individual file size = 500KB (skip oversized single files like lockfiles)
+const MAX_FILE_SIZE = 500 * 1024;
+
+// Increase body size limit for this route
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
+    // Initialize AI services (idempotent - safe to call multiple times)
+    const hfToken = process.env.HF_TOKEN;
+    const groqKey = process.env.GROQ_API_KEY;
+    if (!hfToken || !groqKey) {
+      return NextResponse.json({ error: 'Missing HF_TOKEN or GROQ_API_KEY in .env.local' }, { status: 500 });
+    }
+    initEmbedder(hfToken);
+    initAI(groqKey);
+
+    let formData: FormData;
+    try {
+      formData = await req.formData();
+    } catch (err: any) {
+      return NextResponse.json(
+        { error: 'Failed to parse upload. Files may be too large. Try uploading fewer files.' },
+        { status: 413 }
+      );
+    }
+
     const files = formData.getAll('files') as File[];
 
     if (!files || files.length === 0) {
       return NextResponse.json({ error: 'No files uploaded' }, { status: 400 });
     }
 
+    console.log(`📁 Received ${files.length} files from upload`);
+
     vectorStore.clear();
     indexingState.status = 'indexing';
     indexingState.progress = 0;
     indexingState.message = 'Reading files...';
 
-    // Read all file contents
+    // Read and filter files
     const fileData: { filename: string; content: string }[] = [];
+    let totalSize = 0;
+    let skipped = 0;
+
     for (const file of files) {
+      // Skip oversized individual files
+      if (file.size > MAX_FILE_SIZE) {
+        skipped++;
+        continue;
+      }
+      // Stop if the total size budget is exceeded
+      if (totalSize + file.size > MAX_TOTAL_SIZE) {
+        console.warn(`⚠️ Total size limit reached after ${fileData.length} files. Skipping the rest.`);
+        break;
+      }
+
       try {
         const text = await file.text();
-        fileData.push({ filename: file.name, content: text });
+        // Use webkitRelativePath if available (folder uploads), else just the name
+        const filename = (file as any).webkitRelativePath || file.name;
+        fileData.push({ filename, content: text });
+        totalSize += file.size;
       } catch {
-        // skip unreadable files
+        skipped++;
       }
     }
 
-    console.log(`📁 Received ${fileData.length} files`);
+    console.log(`✅ Read ${fileData.length} files (skipped ${skipped})`);
     indexingState.message = `Chunking ${fileData.length} files...`;
 
     // Chunk the codebase
@@ -39,7 +83,7 @@ export async function POST(req: NextRequest) {
     indexingState.total = chunks.length;
     indexingState.message = `Embedding ${chunks.length} chunks...`;
 
-    // Embed
+    // Embed with retry logic
     const texts = chunks.map((c: any) => `File: ${c.metadata.file}\n${c.content}`);
     const embeddings = await embedBatch(texts, (done: number, total: number) => {
       indexingState.progress = done;
@@ -49,18 +93,20 @@ export async function POST(req: NextRequest) {
 
     vectorStore.addChunks(chunks, embeddings);
 
+    const successfulEmbeddings = embeddings.filter((e: any) => e.embedding).length;
     indexingState.status = 'ready';
     indexingState.progress = chunks.length;
     indexingState.total = chunks.length;
-    indexingState.message = `Indexed ${chunks.length} chunks from ${fileData.length} files`;
+    indexingState.message = `Indexed ${successfulEmbeddings} chunks from ${fileData.length} files`;
 
     const stats = vectorStore.getStats();
     return NextResponse.json({
       success: true,
       stats: {
         filesProcessed: fileData.length,
+        filesSkipped: skipped,
         chunksCreated: chunks.length,
-        chunksEmbedded: embeddings.filter((e: any) => e.embedding).length,
+        chunksEmbedded: successfulEmbeddings,
         ...stats,
       },
     });
