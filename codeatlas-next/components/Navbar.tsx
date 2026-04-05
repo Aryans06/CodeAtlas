@@ -1,4 +1,5 @@
 'use client';
+import { SignInButton, UserButton, useUser } from '@clerk/nextjs';
 
 interface NavbarProps {
   theme: 'dark' | 'light';
@@ -9,6 +10,8 @@ interface NavbarProps {
 }
 
 export default function Navbar({ theme, onToggleTheme, onUploadClick, indexingMsg, isIndexed }: NavbarProps) {
+  const { isLoaded, isSignedIn } = useUser();
+
   return (
     <nav className="navbar" id="navbar">
       <div className="navbar__left">
@@ -27,7 +30,6 @@ export default function Navbar({ theme, onToggleTheme, onUploadClick, indexingMs
           <span className="navbar__logo-text">
             Code<span className="navbar__logo-accent">Atlas</span>
           </span>
-          <span className="navbar__badge">AI</span>
         </div>
         <span className="navbar__tagline">Navigate code, not confusion.</span>
         {indexingMsg && (
@@ -44,6 +46,19 @@ export default function Navbar({ theme, onToggleTheme, onUploadClick, indexingMs
           </svg>
           {isIndexed ? 'Re-upload' : 'Upload Codebase'}
         </button>
+
+        {isLoaded && !isSignedIn && (
+          <SignInButton mode="modal">
+            <button className="btn btn--ghost" style={{ border: '1px solid rgba(225, 29, 72, 0.4)', color: '#fb7185' }}>
+              Sign In
+            </button>
+          </SignInButton>
+        )}
+        
+        {isLoaded && isSignedIn && (
+          <UserButton appearance={{ elements: { userButtonAvatarBox: { width: 34, height: 34 } } }} />
+        )}
+
         <button className="btn btn--ghost" onClick={onToggleTheme} aria-label="Toggle theme">
           {theme === 'dark' ? (
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">

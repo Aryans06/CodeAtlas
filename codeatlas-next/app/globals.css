@@ -327,6 +327,30 @@ body{font-family:var(--font-sans);background:var(--bg-primary);color:var(--text-
 /* ═══ Landing Sections Container ═══ */
 .landing-sections{padding:0 var(--space-xl);max-width:900px;margin:0 auto;padding-bottom:var(--space-3xl)}
 
+/* Custom Crimson/Rose theme for Architecture and Features */
+.how-section .gradient-text, .features .gradient-text {
+  background: linear-gradient(135deg, #e11d48, #fb7185);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.how-section .section__badge, .features .section__badge, .usecases .section__badge {
+  background: rgba(225, 29, 72, 0.12);
+  color: #fb7185;
+  border-color: rgba(225, 29, 72, 0.2);
+}
+
+.how__flow-node--accent {
+  background: #e11d48;
+  box-shadow: 0 0 20px rgba(225, 29, 72, 0.3);
+}
+
+.feature-card:hover, .usecase-card:hover {
+  border-color: rgba(225, 29, 72, 0.25);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(225, 29, 72, 0.08);
+}
+
 /* ═══ Features Grid ═══ */
 .features__grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;text-align:left}
 .feature-card{background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:var(--radius-lg);padding:24px 20px;transition:all 300ms var(--ease-spring)}
@@ -404,8 +428,8 @@ body{font-family:var(--font-sans);background:var(--bg-primary);color:var(--text-
 @media(max-width:768px){.footer__top{flex-direction:column}.footer__links{flex-wrap:wrap;gap:var(--space-xl)}}
 .how__flow-diagram{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
 .how__flow-node{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 20px;background:var(--bg-elevated);border:1px solid var(--border-default);border-radius:var(--radius-md);font-size:0.78rem;font-weight:500;color:var(--text-secondary);transition:all 250ms var(--ease-spring);min-width:90px}
-.how__flow-node:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 0 20px var(--accent-glow)}
-.how__flow-node--accent{background:var(--accent);color:#fff;border-color:transparent;box-shadow:0 0 20px var(--accent-glow)}
+.how__flow-node:hover{transform:translateY(-3px);border-color:#fb7185;box-shadow:0 0 20px rgba(225, 29, 72, 0.2)}
+.how__flow-node--accent{background:#e11d48;color:#fff;border-color:transparent;box-shadow:0 0 20px rgba(225, 29, 72, 0.3)}
 .how__flow-icon{font-size:1.2rem}
 .how__flow-arrow{color:var(--text-tertiary);font-size:1rem;font-weight:300;opacity:0.4}
 .anim-reveal{opacity:0;transform:translateY(24px);transition:opacity 500ms var(--ease-out),transform 500ms var(--ease-out)}

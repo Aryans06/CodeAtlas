@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { chunkCodebase } from '@/lib/chunker';
 import { initEmbedder, embedBatch } from '@/lib/embedder';
 import { vectorStore } from '@/lib/vectorStore';
@@ -15,6 +16,9 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: 'Unauthorized. Please sign in.' }, { status: 401 });
+
     // Initialize AI services (idempotent - safe to call multiple times)
     const hfToken = process.env.HF_TOKEN;
     const groqKey = process.env.GROQ_API_KEY;

@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { initEmbedder, embedText, isEmbedderReady } from '@/lib/embedder';
 import { vectorStore } from '@/lib/vectorStore';
 import { initAI, generateResponse, isAIReady } from '@/lib/ai';
 
 export async function POST(req: NextRequest) {
   try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: 'Unauthorized. Please sign in.' }, { status: 401 });
+
     const { question } = await req.json();
 
     if (!question) {
