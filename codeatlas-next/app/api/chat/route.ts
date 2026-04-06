@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { initEmbedder, embedText, isEmbedderReady } from '@/lib/embedder';
 import { vectorStore } from '@/lib/vectorStore';
-import { initAI, generateResponse, isAIReady } from '@/lib/ai';
+import { initAI, generateStreamingResponse, isAIReady } from '@/lib/ai';
 
 export async function POST(req: NextRequest) {
   try {
@@ -43,12 +43,44 @@ export async function POST(req: NextRequest) {
       `🔍 Found ${results.length} chunks (top: ${((results[0]?.score ?? 0) * 100).toFixed(1)}%)`
     );
 
-    // Generate AI response
-    const response = await generateResponse(question, results);
+    // Generate streaming AI response
+    const { stream: groqStream, sources } = await generateStreamingResponse(question, results);
 
-    return NextResponse.json({
-      answer: response.text,
-      sources: response.sources,
+    // Create a ReadableStream that pipes Groq tokens as Server-Sent Events
+    const encoder = new TextEncoder();
+    const readableStream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of groqStream) {
+            const token = chunk.choices[0]?.delta?.content;
+            if (token) {
+              const sseData = `data: ${JSON.stringify({ token })}\n\n`;
+              controller.enqueue(encoder.encode(sseData));
+            }
+          }
+          // After all tokens are sent, send the sources
+          const sourcesEvent = `data: ${JSON.stringify({ sources })}\n\n`;
+          controller.enqueue(encoder.encode(sourcesEvent));
+
+          // Signal end of stream
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          controller.close();
+        } catch (err: any) {
+          console.error('❌ Stream error:', err);
+          const errorEvent = `data: ${JSON.stringify({ error: err.message })}\n\n`;
+          controller.enqueue(encoder.encode(errorEvent));
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(readableStream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
     });
   } catch (err: any) {
     console.error('❌ Chat failed:', err);

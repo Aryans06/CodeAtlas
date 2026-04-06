@@ -80,7 +80,7 @@ export default function Home() {
     document.documentElement.setAttribute('data-theme', next);
   };
 
-  // Send a chat message
+  // Send a chat message (streaming)
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || isLoading) return;
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -88,33 +88,101 @@ export default function Home() {
     setIsLoading(true);
     setSources([]);
 
+    const aiTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // Push an empty AI message that will be filled token-by-token
+    setMessages(prev => [...prev, { role: 'ai', content: '', time: aiTime }]);
+
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: text }),
       });
-      const data = await res.json();
-      const aiTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
       if (!res.ok) {
-        setMessages(prev => [
-          ...prev,
-          { role: 'ai', content: `⚠️ ${data.error || 'Something went wrong.'}`, time: aiTime },
-        ]);
-      } else {
-        setMessages(prev => [
-          ...prev,
-          { role: 'ai', content: data.answer, sources: data.sources, time: aiTime },
-        ]);
-        if (data.sources?.length) setSources(data.sources);
+        // Non-streaming error (auth, validation, etc.)
+        const data = await res.json();
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            role: 'ai',
+            content: `⚠️ ${data.error || 'Something went wrong.'}`,
+            time: aiTime,
+          };
+          return updated;
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Read the SSE stream
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        // Keep the last potentially incomplete line in the buffer
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const payload = line.slice(6);
+
+          if (payload === '[DONE]') break;
+
+          try {
+            const parsed = JSON.parse(payload);
+
+            if (parsed.token) {
+              // Append the token to the last (AI) message
+              setMessages(prev => {
+                const updated = [...prev];
+                const last = updated[updated.length - 1];
+                updated[updated.length - 1] = { ...last, content: last.content + parsed.token };
+                return updated;
+              });
+            }
+
+            if (parsed.sources) {
+              // Attach sources to the AI message
+              setMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = { ...updated[updated.length - 1], sources: parsed.sources };
+                return updated;
+              });
+              setSources(parsed.sources);
+            }
+
+            if (parsed.error) {
+              setMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = {
+                  ...updated[updated.length - 1],
+                  content: updated[updated.length - 1].content + `\n\n⚠️ ${parsed.error}`,
+                };
+                return updated;
+              });
+            }
+          } catch {
+            // Ignore malformed JSON lines
+          }
+        }
       }
     } catch (err: any) {
-      const aiTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      setMessages(prev => [
-        ...prev,
-        { role: 'ai', content: `❌ Network error: ${err.message}`, time: aiTime },
-      ]);
+      setMessages(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          role: 'ai',
+          content: `❌ Network error: ${err.message}`,
+          time: aiTime,
+        };
+        return updated;
+      });
     } finally {
       setIsLoading(false);
     }

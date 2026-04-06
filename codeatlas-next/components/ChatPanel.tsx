@@ -99,38 +99,34 @@ export default function ChatPanel({ messages, isLoading, onSendMessage, hasCodeb
             </div>
           )}
 
-          {messages.map((msg, i) => (
-            <div key={i} className={`message message--${msg.role}`}>
-              <div className="message__avatar">{msg.role === 'user' ? 'U' : 'AI'}</div>
-              <div className="message__content">
-                <div className="message__header">
-                  <span className="message__name">{msg.role === 'user' ? 'You' : 'CodeAtlas AI'}</span>
-                  <span className="message__time">{msg.time}</span>
-                </div>
-                <div className="message__body">
-                  {msg.role === 'user' ? (
-                    <p>{msg.content}</p>
-                  ) : (
-                    <div dangerouslySetInnerHTML={{ __html: formatAI(msg.content) }} />
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {isLoading && (
-            <div className="message message--ai">
-              <div className="message__avatar">AI</div>
-              <div className="message__content">
-                <div className="message__header">
-                  <span className="message__name">CodeAtlas AI</span>
-                </div>
-                <div className="typing-indicator">
-                  <span /><span /><span />
+          {messages.map((msg, i) => {
+            const isStreamingMsg = isLoading && msg.role === 'ai' && i === messages.length - 1;
+            return (
+              <div key={i} className={`message message--${msg.role}`}>
+                <div className="message__avatar">{msg.role === 'user' ? 'U' : 'AI'}</div>
+                <div className="message__content">
+                  <div className="message__header">
+                    <span className="message__name">{msg.role === 'user' ? 'You' : 'CodeAtlas AI'}</span>
+                    <span className="message__time">{msg.time}</span>
+                  </div>
+                  <div className="message__body">
+                    {msg.role === 'user' ? (
+                      <p>{msg.content}</p>
+                    ) : (
+                      <>
+                        {msg.content ? (
+                          <div dangerouslySetInnerHTML={{ __html: formatAI(msg.content) }} />
+                        ) : isStreamingMsg ? (
+                          <div className="typing-indicator"><span /><span /><span /></div>
+                        ) : null}
+                        {isStreamingMsg && msg.content && <span className="streaming-cursor" />}
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })}
           <div ref={messagesEndRef} />
         </div>
 
