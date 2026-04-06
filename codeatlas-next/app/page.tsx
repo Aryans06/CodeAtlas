@@ -7,6 +7,7 @@ import Sidebar from '@/components/Sidebar';
 import ChatPanel from '@/components/ChatPanel';
 import ContextPanel from '@/components/ContextPanel';
 import UploadModal from '@/components/UploadModal';
+import { useUser } from '@clerk/nextjs';
 
 export interface Source {
   file: string;
@@ -39,6 +40,31 @@ export default function Home() {
   const [sources, setSources] = useState<Source[]>([]);
   const [isIndexed, setIsIndexed] = useState(false);
   const [indexingMsg, setIndexingMsg] = useState('');
+  const { isSignedIn } = useUser();
+
+  // Check DB status on mount or sign in
+  useEffect(() => {
+    if (isSignedIn) {
+      fetch('/api/status')
+        .then(res => res.json())
+        .then(data => {
+          if (data.isIndexed) {
+            setIsIndexed(true);
+            setIndexingMsg(`✅ DB ready: ${data.totalChunks} chunks loaded`);
+            // Rebuild the file tree sidebar here using the actual Supabase files
+            if (data.files && data.files.length > 0) {
+              setFileTree(buildFileTree(data.files));
+            }
+            setTimeout(() => setIndexingMsg(''), 3000);
+          }
+        })
+        .catch(console.error);
+    } else {
+      setIsIndexed(false);
+      setFileTree([]);
+      setMessages([]);
+    }
+  }, [isSignedIn]);
 
   // Theme
   useEffect(() => {

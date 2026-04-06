@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
 
     console.log(`📁 Received ${files.length} files from upload`);
 
-    vectorStore.clear();
+    // Remove the old local vectorStore.clear()
     indexingState.status = 'indexing';
     indexingState.progress = 0;
     indexingState.message = 'Reading files...';
@@ -87,6 +87,9 @@ export async function POST(req: NextRequest) {
     indexingState.total = chunks.length;
     indexingState.message = `Embedding ${chunks.length} chunks...`;
 
+    // Drop existing vector entries for this user before uploading fresh codebase
+    await vectorStore.clear(userId);
+
     // Embed with retry logic
     const texts = chunks.map((c: any) => `File: ${c.metadata.file}\n${c.content}`);
     const embeddings = await embedBatch(texts, (done: number, total: number) => {
@@ -95,7 +98,7 @@ export async function POST(req: NextRequest) {
       indexingState.message = `Embedding chunk ${done}/${total}...`;
     });
 
-    vectorStore.addChunks(chunks, embeddings);
+    await vectorStore.addChunks(userId, chunks, embeddings);
 
     const successfulEmbeddings = embeddings.filter((e: any) => e.embedding).length;
     indexingState.status = 'ready';
@@ -103,7 +106,7 @@ export async function POST(req: NextRequest) {
     indexingState.total = chunks.length;
     indexingState.message = `Indexed ${successfulEmbeddings} chunks from ${fileData.length} files`;
 
-    const stats = vectorStore.getStats();
+    const stats = await vectorStore.getStatus(userId);
     return NextResponse.json({
       success: true,
       stats: {

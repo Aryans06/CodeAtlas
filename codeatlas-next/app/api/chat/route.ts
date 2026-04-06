@@ -24,7 +24,8 @@ export async function POST(req: NextRequest) {
     if (!isEmbedderReady()) initEmbedder(hfToken);
     if (!isAIReady()) initAI(groqKey);
 
-    if (!vectorStore.isIndexed) {
+    const dbStatus = await vectorStore.getStatus(userId);
+    if (!dbStatus.isIndexed) {
       return NextResponse.json(
         { error: 'No codebase indexed. Upload files first.' },
         { status: 400 }
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
     const queryEmbedding = await embedText(question);
 
     // Search for relevant code chunks
-    const results = vectorStore.search(queryEmbedding, 5);
+    const results = await vectorStore.search(userId, queryEmbedding, 5);
     console.log(
       `🔍 Found ${results.length} chunks (top: ${((results[0]?.score ?? 0) * 100).toFixed(1)}%)`
     );
