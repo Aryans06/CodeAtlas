@@ -4,15 +4,24 @@ import { initEmbedder, embedText, isEmbedderReady } from '@/lib/embedder';
 import { vectorStore } from '@/lib/vectorStore';
 import { initAI, generateStreamingResponse, isAIReady } from '@/lib/ai';
 
+import { chatHistory } from '@/lib/chatHistory';
+
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized. Please sign in.' }, { status: 401 });
 
-    const { question } = await req.json();
+    const { question, sessionId, isFirstMessage } = await req.json();
 
     if (!question) {
       return NextResponse.json({ error: 'Question is required' }, { status: 400 });
+    }
+
+    if (sessionId) {
+      await chatHistory.saveMessage(sessionId, 'user', question);
+      if (isFirstMessage) {
+        await chatHistory.updateSessionTitle(sessionId, question);
+      }
     }
 
     // Initialize services if they haven't been yet (e.g. after hot reload)
@@ -50,10 +59,12 @@ export async function POST(req: NextRequest) {
     const encoder = new TextEncoder();
     const readableStream = new ReadableStream({
       async start(controller) {
+        let aiContent = '';
         try {
           for await (const chunk of groqStream) {
             const token = chunk.choices[0]?.delta?.content;
             if (token) {
+              aiContent += token;
               const sseData = `data: ${JSON.stringify({ token })}\n\n`;
               controller.enqueue(encoder.encode(sseData));
             }
@@ -65,6 +76,10 @@ export async function POST(req: NextRequest) {
           // Signal end of stream
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
           controller.close();
+          
+          if (sessionId) {
+            await chatHistory.saveMessage(sessionId, 'ai', aiContent, sources);
+          }
         } catch (err: any) {
           console.error('❌ Stream error:', err);
           const errorEvent = `data: ${JSON.stringify({ error: err.message })}\n\n`;

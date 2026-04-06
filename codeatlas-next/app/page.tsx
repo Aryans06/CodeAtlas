@@ -8,6 +8,7 @@ import ChatPanel from '@/components/ChatPanel';
 import ContextPanel from '@/components/ContextPanel';
 import UploadModal from '@/components/UploadModal';
 import { useUser } from '@clerk/nextjs';
+import type { SessionInfo } from '@/components/Sidebar';
 
 export interface Source {
   file: string;
@@ -40,7 +41,65 @@ export default function Home() {
   const [sources, setSources] = useState<Source[]>([]);
   const [isIndexed, setIsIndexed] = useState(false);
   const [indexingMsg, setIndexingMsg] = useState('');
+  const [sessions, setSessions] = useState<SessionInfo[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const { isSignedIn } = useUser();
+
+  // Fetch History Sidebar items
+  const loadSessions = useCallback(async () => {
+    if (!isSignedIn) return;
+    try {
+      const res = await fetch('/api/history');
+      if (res.ok) {
+        const data = await res.json();
+        setSessions(data.sessions || []);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, [isSignedIn]);
+
+  // Handle clicking New Chat
+  const handleNewChat = () => {
+    setActiveSessionId(null);
+    setMessages([]);
+    setSources([]);
+  };
+
+  // Handle selecting a past session
+  const handleSelectSession = async (sessionId: string) => {
+    setActiveSessionId(sessionId);
+    setMessages([]);
+    setSources([]);
+    try {
+      const res = await fetch(`/api/history?sessionId=${sessionId}`);
+      if (res.ok) {
+        const data = await res.json();
+        // Map database format to frontend format
+        setMessages(data.messages.map((m: any) => ({
+          role: m.role,
+          content: m.content,
+          sources: m.sources,
+          time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        })));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Handle deleting a session
+  const handleDeleteSession = async (sessionId: string) => {
+    try {
+      await fetch(`/api/history?sessionId=${sessionId}`, { method: 'DELETE' });
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
+      if (activeSessionId === sessionId) {
+        handleNewChat();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Check DB status on mount or sign in
   useEffect(() => {
@@ -51,7 +110,6 @@ export default function Home() {
           if (data.isIndexed) {
             setIsIndexed(true);
             setIndexingMsg(`✅ DB ready: ${data.totalChunks} chunks loaded`);
-            // Rebuild the file tree sidebar here using the actual Supabase files
             if (data.files && data.files.length > 0) {
               setFileTree(buildFileTree(data.files));
             }
@@ -59,12 +117,16 @@ export default function Home() {
           }
         })
         .catch(console.error);
+        
+      loadSessions();
     } else {
       setIsIndexed(false);
       setFileTree([]);
       setMessages([]);
+      setSessions([]);
+      setActiveSessionId(null);
     }
-  }, [isSignedIn]);
+  }, [isSignedIn, loadSessions]);
 
   // Theme
   useEffect(() => {
@@ -89,14 +151,31 @@ export default function Home() {
     setSources([]);
 
     const aiTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    // Push an empty AI message that will be filled token-by-token
     setMessages(prev => [...prev, { role: 'ai', content: '', time: aiTime }]);
 
+    // Track session
+    let targetSessionId = activeSessionId;
+    const isFirstMessage = !activeSessionId && messages.length === 0;
+
     try {
+      // Create session on the fly if needed
+      if (!targetSessionId) {
+        const createRes = await fetch('/api/history', { method: 'POST' });
+        if (createRes.ok) {
+          const s = await createRes.json();
+          targetSessionId = s.sessionId;
+          setActiveSessionId(s.sessionId);
+        }
+      }
+
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: text }),
+        body: JSON.stringify({ 
+          question: text, 
+          sessionId: targetSessionId,
+          isFirstMessage 
+        }),
       });
 
       if (!res.ok) {
@@ -185,8 +264,9 @@ export default function Home() {
       });
     } finally {
       setIsLoading(false);
+      if (isFirstMessage) loadSessions(); // Refresh Sidebar list instantly to show new chat
     }
-  }, [isLoading]);
+  }, [isLoading, activeSessionId, messages.length, loadSessions]);
 
   // Upload files
   const handleUpload = useCallback(async (files: File[]) => {
@@ -223,7 +303,14 @@ export default function Home() {
         isIndexed={isIndexed}
       />
       <main className="app" id="app">
-        <Sidebar fileTree={fileTree} />
+        <Sidebar 
+          fileTree={fileTree} 
+          sessions={sessions}
+          activeSessionId={activeSessionId}
+          onNewChat={handleNewChat}
+          onSelectSession={handleSelectSession}
+          onDeleteSession={handleDeleteSession}
+        />
         <ChatPanel
           messages={messages}
           isLoading={isLoading}
