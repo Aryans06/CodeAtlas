@@ -7,6 +7,7 @@ import Sidebar from '@/components/Sidebar';
 import ChatPanel from '@/components/ChatPanel';
 import ContextPanel from '@/components/ContextPanel';
 import UploadModal from '@/components/UploadModal';
+import ArchModal from '@/components/ArchModal';
 import { useUser } from '@clerk/nextjs';
 import type { SessionInfo } from '@/components/Sidebar';
 
@@ -43,6 +44,10 @@ export default function Home() {
   const [indexingMsg, setIndexingMsg] = useState('');
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [showArchModal, setShowArchModal] = useState(false);
+  const [archMermaid, setArchMermaid] = useState('');
+  const [archFileCount, setArchFileCount] = useState(0);
+  const [archLoading, setArchLoading] = useState(false);
   const { isSignedIn } = useUser();
 
   // Fetch History Sidebar items
@@ -333,6 +338,25 @@ export default function Home() {
         theme={theme}
         onToggleTheme={toggleTheme}
         onUploadClick={() => setShowModal(true)}
+        onVisualizeClick={async () => {
+          setShowArchModal(true);
+          setArchLoading(true);
+          setArchMermaid('');
+          try {
+            const res = await fetch('/api/visualize', { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+              setArchMermaid(data.mermaid);
+              setArchFileCount(data.fileCount);
+            } else {
+              setArchMermaid(`graph TD\n  A["Error: ${data.error}"]`);
+            }
+          } catch (err: any) {
+            setArchMermaid(`graph TD\n  A["Error: ${err.message}"]`);
+          } finally {
+            setArchLoading(false);
+          }
+        }}
         indexingMsg={indexingMsg}
         isIndexed={isIndexed}
       />
@@ -358,6 +382,14 @@ export default function Home() {
           onClose={() => setShowModal(false)}
           onUpload={handleUpload}
           onGitHubImport={handleGitHubImport}
+        />
+      )}
+      {showArchModal && (
+        <ArchModal
+          mermaidCode={archMermaid}
+          fileCount={archFileCount}
+          isLoading={archLoading}
+          onClose={() => setShowArchModal(false)}
         />
       )}
     </>

@@ -239,6 +239,7 @@ body{font-family:var(--font-sans);background:var(--bg-primary);color:var(--text-
 /* Streaming cursor — blinking bar at the end of the AI message while tokens arrive */
 .streaming-cursor{display:inline-block;width:2px;height:1em;background:#fb7185;margin-left:2px;vertical-align:text-bottom;animation:cursorBlink 0.8s steps(2) infinite}
 @keyframes cursorBlink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
 @keyframes typePulse{0%,70%,100%{transform:scale(0.8);opacity:0.3}35%{transform:scale(1.2);opacity:1}}
 
 /* Chat Input — Raycast-style */

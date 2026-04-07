@@ -5,11 +5,12 @@ interface NavbarProps {
   theme: 'dark' | 'light';
   onToggleTheme: () => void;
   onUploadClick: () => void;
+  onVisualizeClick: () => void;
   indexingMsg: string;
   isIndexed: boolean;
 }
 
-export default function Navbar({ theme, onToggleTheme, onUploadClick, indexingMsg, isIndexed }: NavbarProps) {
+export default function Navbar({ theme, onToggleTheme, onUploadClick, onVisualizeClick, indexingMsg, isIndexed }: NavbarProps) {
   const { isLoaded, isSignedIn } = useUser();
 
   return (
@@ -39,6 +40,17 @@ export default function Navbar({ theme, onToggleTheme, onUploadClick, indexingMs
         )}
       </div>
       <div className="navbar__right">
+        {isIndexed && (
+          <button className="btn btn--ghost" onClick={onVisualizeClick} style={{ border: '1px solid rgba(239, 68, 68, 0.3)', color: '#fb7185', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="4" cy="4" r="2" stroke="currentColor" strokeWidth="1.2" />
+              <circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="1.2" />
+              <circle cx="8" cy="13" r="2" stroke="currentColor" strokeWidth="1.2" />
+              <path d="M4 6V8L8 11M12 6V8L8 11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
+            Visualize
+          </button>
+        )}
         <button className="btn btn--primary" onClick={onUploadClick} id="uploadBtn">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M8 1V11M8 1L4 5M8 1L12 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
