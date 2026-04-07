@@ -510,14 +510,144 @@ body{font-family:var(--font-sans);background:var(--bg-primary);color:var(--text-
 @keyframes iconGlow{0%,100%{opacity:0.4;transform:scale(1)}50%{opacity:0.8;transform:scale(1.15)}}
 
 /* Live Animation Visuals */
-.hero-visual { position: relative; margin-bottom: var(--space-xl); width: 80px; height: 80px; perspective: 1000px; display: inline-block; z-index: 1; }
-.hero-visual__glow { position: absolute; inset: -30px; border-radius: 50%; background: radial-gradient(circle, rgba(239, 68, 68, 0.25), transparent 70%); animation: iconGlow 3s ease-in-out infinite; pointer-events: none; z-index: 0; }
-.hero-visual__inner { position: relative; width: 100%; height: 100%; background: rgba(20, 0, 0, 0.5); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 12px; transform: rotateX(20deg) rotateY(-15deg); transform-style: preserve-3d; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(239, 68, 68, 0.15); padding: 12px 10px; display: flex; flex-direction: column; gap: 6px; overflow: hidden; animation: visualFloat 4s ease-in-out infinite alternate; z-index: 1; margin: 0 auto; }
-.hero-visual__line { height: 4px; background: rgba(239, 68, 68, 0.4); border-radius: 2px; }
-.hero-visual__line:nth-child(even) { background: rgba(255, 68, 68, 0.7); box-shadow: 0 0 5px rgba(255, 68, 68, 0.5); }
-.hero-visual__scanner { position: absolute; left: 0; width: 100%; height: 2px; background: #ff4444; box-shadow: 0 0 10px #ff4444, 0 0 20px #ff4444; z-index: 10; animation: scanCode 2s linear infinite; }
+.hero-visual {
+  position: relative;
+  margin-bottom: var(--space-xl);
+  width: 220px;
+  height: 160px;
+  perspective: 1200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
 
-@keyframes visualFloat { 0% { transform: rotateX(20deg) rotateY(-15deg) translateY(0); } 100% { transform: rotateX(25deg) rotateY(-10deg) translateY(-8px); } }
+/* Orbiting rings */
+.hero-visual__ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  animation: ringOrbit 8s linear infinite;
+  pointer-events: none;
+}
+.hero-visual__ring--1 { width: 180px; height: 180px; animation-duration: 10s; border-color: rgba(239, 68, 68, 0.12); }
+.hero-visual__ring--2 { width: 240px; height: 240px; animation-duration: 14s; animation-direction: reverse; border-color: rgba(251, 113, 133, 0.08); }
+.hero-visual__ring--3 { width: 300px; height: 300px; animation-duration: 20s; border-color: rgba(239, 68, 68, 0.05); border-style: dashed; }
+@keyframes ringOrbit {
+  0%   { transform: rotateX(60deg) rotateZ(0deg); }
+  100% { transform: rotateX(60deg) rotateZ(360deg); }
+}
+
+/* Floating particles */
+.hero-visual__particles { position: absolute; inset: 0; pointer-events: none; }
+.hero-visual__particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #fb7185;
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  box-shadow: 0 0 6px #fb7185;
+  animation: particleFloat 3s ease-in-out infinite;
+  animation-delay: var(--delay);
+  transform: rotate(var(--angle)) translateX(var(--distance));
+  opacity: 0.6;
+}
+.hero-visual__particle:nth-child(3n)   { background: #ef4444; box-shadow: 0 0 6px #ef4444; width: 3px; height: 3px; }
+.hero-visual__particle:nth-child(3n+1) { background: #fca5a5; box-shadow: 0 0 8px #fca5a5; width: 5px; height: 5px; }
+@keyframes particleFloat {
+  0%, 100% { opacity: 0.3; transform: rotate(var(--angle)) translateX(var(--distance)) scale(1); }
+  50%      { opacity: 0.8; transform: rotate(var(--angle)) translateX(calc(var(--distance) + 10px)) scale(1.4); }
+}
+
+/* Glow */
+.hero-visual__glow {
+  position: absolute;
+  inset: -40px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.2), transparent 70%);
+  animation: iconGlow 3s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Main terminal block */
+.hero-visual__inner {
+  position: relative;
+  width: 200px;
+  height: 140px;
+  background: rgba(10, 0, 0, 0.7);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  transform: rotateX(10deg) rotateY(-8deg);
+  transform-style: preserve-3d;
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.6),
+    0 0 40px rgba(239, 68, 68, 0.08),
+    inset 0 0 30px rgba(239, 68, 68, 0.06);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: visualFloat 4s ease-in-out infinite alternate;
+  z-index: 1;
+  backdrop-filter: blur(10px);
+}
+
+/* Traffic light dots */
+.hero-visual__dots {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+.hero-visual__dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  opacity: 0.8;
+}
+
+/* Code lines container */
+.hero-visual__code {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-family: 'SF Mono', 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+}
+
+/* Each code line */
+.hero-visual__line {
+  color: rgba(255, 255, 255, 0.5);
+  opacity: 0;
+  animation: lineReveal 0.5s ease forwards;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hero-visual__keyword { color: #f472b6; font-weight: 600; }
+.hero-visual__fn { color: #fb923c; }
+.hero-visual__line--cursor { color: #ef4444; animation: lineReveal 0.5s ease forwards, cursorBlink 0.8s steps(2) infinite 0.8s; }
+
+@keyframes lineReveal {
+  0%   { opacity: 0; transform: translateX(-8px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+/* Scanner beam */
+.hero-visual__scanner {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #ff4444, transparent);
+  box-shadow: 0 0 15px #ff4444, 0 0 30px rgba(255, 68, 68, 0.3);
+  z-index: 10;
+  animation: scanCode 3s linear infinite;
+}
+
+@keyframes visualFloat { 0% { transform: rotateX(10deg) rotateY(-8deg) translateY(0); } 100% { transform: rotateX(14deg) rotateY(-5deg) translateY(-6px); } }
 @keyframes scanCode { 0% { top: 10%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 90%; opacity: 0; } }
 
 /* Shimmer text — gradient slides across "Instantly" */

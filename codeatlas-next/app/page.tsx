@@ -292,6 +292,40 @@ export default function Home() {
     }
   }, []);
 
+  // GitHub import
+  const handleGitHubImport = useCallback(async (url: string) => {
+    setIndexingMsg('🐙 Fetching from GitHub...');
+    try {
+      const res = await fetch('/api/github', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setIsIndexed(true);
+        setIndexingMsg(`✅ Imported ${data.repoName}: ${data.stats.chunksCreated} chunks from ${data.stats.filesProcessed} files`);
+        // Rebuild file tree from the stats
+        if (data.stats.files && data.stats.files.length > 0) {
+          setFileTree(buildFileTree(data.stats.files));
+        } else {
+          // Fallback: fetch status to get file list
+          const statusRes = await fetch('/api/status');
+          if (statusRes.ok) {
+            const statusData = await statusRes.json();
+            if (statusData.files) setFileTree(buildFileTree(statusData.files));
+          }
+        }
+        setShowModal(false);
+        setTimeout(() => setIndexingMsg(''), 4000);
+      } else {
+        setIndexingMsg(`❌ ${data.error}`);
+      }
+    } catch (err: any) {
+      setIndexingMsg(`❌ ${err.message}`);
+    }
+  }, []);
+
   return (
     <>
       <AmbientBackground />
@@ -323,6 +357,7 @@ export default function Home() {
         <UploadModal
           onClose={() => setShowModal(false)}
           onUpload={handleUpload}
+          onGitHubImport={handleGitHubImport}
         />
       )}
     </>

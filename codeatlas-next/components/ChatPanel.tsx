@@ -63,15 +63,54 @@ export default function ChatPanel({ messages, isLoading, onSendMessage, hasCodeb
           {showWelcome && (
             <div className="chat__welcome" id="chatWelcome">
               <div className="chat__welcome-glow" style={{ background: 'radial-gradient(circle, rgba(239, 68, 68, 0.15) 0%, transparent 60%)' }} />
+              
+              {/* Animated Hero Visual */}
               <div className="hero-visual">
+                {/* Orbiting rings */}
+                <div className="hero-visual__ring hero-visual__ring--1" />
+                <div className="hero-visual__ring hero-visual__ring--2" />
+                <div className="hero-visual__ring hero-visual__ring--3" />
+                
+                {/* Floating particles */}
+                <div className="hero-visual__particles">
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <div key={i} className="hero-visual__particle" style={{
+                      '--i': i,
+                      '--angle': `${i * 30}deg`,
+                      '--delay': `${i * 0.3}s`,
+                      '--distance': `${60 + (i % 3) * 25}px`,
+                    } as React.CSSProperties} />
+                  ))}
+                </div>
+                
+                {/* Glow pulse */}
                 <div className="hero-visual__glow" />
+                
+                {/* Main terminal block */}
                 <div className="hero-visual__inner">
                   <div className="hero-visual__scanner" />
-                  <div className="hero-visual__line" style={{ width: '70%' }} />
-                  <div className="hero-visual__line" style={{ width: '40%' }} />
-                  <div className="hero-visual__line" style={{ width: '90%' }} />
-                  <div className="hero-visual__line" style={{ width: '50%' }} />
-                  <div className="hero-visual__line" style={{ width: '80%' }} />
+                  <div className="hero-visual__dots">
+                    <span style={{ background: '#ff5f57' }} />
+                    <span style={{ background: '#ffbd2e' }} />
+                    <span style={{ background: '#28c840' }} />
+                  </div>
+                  <div className="hero-visual__code">
+                    <div className="hero-visual__line" style={{ width: '65%', animationDelay: '0s' }}>
+                      <span className="hero-visual__keyword">import</span> {'{ analyze }'}
+                    </div>
+                    <div className="hero-visual__line" style={{ width: '85%', animationDelay: '0.15s' }}>
+                      <span className="hero-visual__keyword">const</span> chunks = <span className="hero-visual__fn">embed</span>(code)
+                    </div>
+                    <div className="hero-visual__line" style={{ width: '55%', animationDelay: '0.3s' }}>
+                      <span className="hero-visual__keyword">await</span> <span className="hero-visual__fn">search</span>(query)
+                    </div>
+                    <div className="hero-visual__line" style={{ width: '75%', animationDelay: '0.45s' }}>
+                      <span className="hero-visual__keyword">return</span> {'{ answer, sources }'}
+                    </div>
+                    <div className="hero-visual__line hero-visual__line--cursor" style={{ width: '20%', animationDelay: '0.6s' }}>
+                      █
+                    </div>
+                  </div>
                 </div>
               </div>
               <p className="chat__welcome-tag">AI-Powered Codebase Intelligence</p>
