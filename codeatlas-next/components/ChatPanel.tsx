@@ -11,7 +11,7 @@ const SUGGESTIONS = [
 
 function formatAI(text: string) {
   return text
-    .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+    .replace(/```(\w+)?\n([\s\S]*?)```/g, '<div class="code-block-wrapper"><div class="code-block-header"><span class="code-block-lang">$1</span><button class="code-copy-btn" onclick="navigator.clipboard.writeText(this.parentElement.nextElementSibling.textContent);this.textContent=\'✅ Copied\';setTimeout(()=>this.textContent=\'📋 Copy\',1500)">📋 Copy</button></div><pre><code>$2</code></pre></div>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/\n/g, '<br/>');
@@ -142,7 +142,19 @@ export default function ChatPanel({ messages, isLoading, onSendMessage, hasCodeb
             const isStreamingMsg = isLoading && msg.role === 'ai' && i === messages.length - 1;
             return (
               <div key={i} className={`message message--${msg.role}`}>
-                <div className="message__avatar">{msg.role === 'user' ? 'U' : 'AI'}</div>
+                <div className="message__avatar">
+                  {msg.role === 'user' ? (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <circle cx="8" cy="5" r="3" stroke="currentColor" strokeWidth="1.3" />
+                      <path d="M2 14c0-3 2.5-5 6-5s6 2 6 5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M5 7L8 4L11 7V13L8 16L5 13V7Z" stroke="currentColor" strokeWidth="1.2" fill="none" opacity="0.9" />
+                      <circle cx="8" cy="9" r="1.5" fill="currentColor" opacity="0.7" />
+                    </svg>
+                  )}
+                </div>
                 <div className="message__content">
                   <div className="message__header">
                     <span className="message__name">{msg.role === 'user' ? 'You' : 'CodeAtlas AI'}</span>
@@ -162,6 +174,21 @@ export default function ChatPanel({ messages, isLoading, onSendMessage, hasCodeb
                       </>
                     )}
                   </div>
+                  {/* Message Actions */}
+                  {msg.role === 'ai' && msg.content && !isStreamingMsg && (
+                    <div className="message__actions">
+                      <button
+                        className="message__action-btn"
+                        onClick={() => {
+                          navigator.clipboard.writeText(msg.content);
+                          const btn = document.activeElement as HTMLButtonElement;
+                          if (btn) { btn.textContent = '✅ Copied!'; setTimeout(() => btn.textContent = '📋 Copy', 1500); }
+                        }}
+                      >
+                        📋 Copy
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -264,10 +291,101 @@ function LandingSections() {
         </div>
       </section>
 
+      {/* Tech Stack — Powered By */}
+      <section className="section tech-section">
+        <span className="section__badge">Powered By</span>
+        <h2 className="section__title">Built on the <span className="gradient-text">best stack</span></h2>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', maxWidth: '480px', margin: '0 auto 2rem', lineHeight: 1.7 }}>
+          CodeAtlas combines cutting-edge AI models with production-grade infrastructure.
+        </p>
+        <div className="tech__grid">
+          {[
+            ['⚡', 'Groq + Llama 3.3', 'Lightning-fast 70B inference for real-time code understanding'],
+            ['🧬', 'HuggingFace', 'MiniLM-L6-v2 embeddings: 384-dimensional semantic search'],
+            ['🗄️', 'Supabase pgvector', 'Postgres-native vector similarity search at scale'],
+            ['🔐', 'Clerk Auth', 'Enterprise-grade user authentication and multi-tenancy'],
+            ['▲', 'Next.js 15', 'Full-stack React framework with server components and edge runtime'],
+            ['🐙', 'GitHub API', 'One-click public repo import via Git Trees API'],
+          ].map(([icon, title, desc]) => (
+            <div key={title as string} className="tech-card">
+              <span className="tech-card__icon">{icon}</span>
+              <div>
+                <h4>{title}</h4>
+                <p>{desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Stats — Social Proof */}
+      <section className="section stats-section">
+        <div className="stats__grid">
+          {[
+            ['384', 'Vector Dimensions', 'Per code embedding'],
+            ['70B', 'AI Parameters', 'Llama 3.3 Versatile'],
+            ['<2s', 'Response Time', 'Groq inference speed'],
+            ['∞', 'Files Supported', 'Any language, any size'],
+          ].map(([num, label, sub]) => (
+            <div key={label as string} className="stat-card">
+              <span className="stat-card__number">{num}</span>
+              <span className="stat-card__label">{label}</span>
+              <span className="stat-card__sub">{sub}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="section cta-section">
+        <div className="cta__inner">
+          <div className="cta__glow" />
+          <h2 className="cta__title">Ready to understand any codebase?</h2>
+          <p className="cta__sub">Upload your first project and ask a question. It takes less than 30 seconds.</p>
+          <div className="cta__actions">
+            <span className="cta__pill">✨ Free to use</span>
+            <span className="cta__pill">🔒 100% private</span>
+            <span className="cta__pill">⚡ Instant results</span>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="site-footer">
+        <div className="footer__top">
+          <div className="footer__brand">
+            <span style={{ fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.03em' }}>
+              Code<span style={{ color: '#ef4444' }}>Atlas</span>
+            </span>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '4px' }}>
+              AI-powered codebase intelligence.
+            </p>
+          </div>
+          <div className="footer__links">
+            <div className="footer__col">
+              <h4>Product</h4>
+              <span>Semantic Search</span>
+              <span>GitHub Import</span>
+              <span>File Explainer</span>
+              <span>Architecture View</span>
+            </div>
+            <div className="footer__col">
+              <h4>Stack</h4>
+              <span>Next.js</span>
+              <span>Supabase</span>
+              <span>Groq AI</span>
+              <span>Clerk Auth</span>
+            </div>
+            <div className="footer__col">
+              <h4>Resources</h4>
+              <a href="https://github.com/Aryans06/CodeAtlas" target="_blank" rel="noreferrer" style={{ color: 'var(--text-tertiary)', textDecoration: 'none' }}>GitHub Repo</a>
+              <span>Documentation</span>
+              <span>API Reference</span>
+            </div>
+          </div>
+        </div>
         <div className="footer__bottom">
-          <span>© 2025 CodeAtlas. All rights reserved.</span>
+          <span>© 2026 CodeAtlas. All rights reserved.</span>
           <span>Built with ❤️ for developers</span>
         </div>
       </footer>

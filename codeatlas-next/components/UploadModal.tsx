@@ -59,7 +59,7 @@ export default function UploadModal({ onClose, onUpload, onGitHubImport }: Uploa
   const tabStyle = (t: Tab): React.CSSProperties => ({
     flex: 1,
     padding: '10px 16px',
-    background: tab === t ? 'var(--accent)' : 'transparent',
+    background: tab === t ? 'linear-gradient(135deg, #ef4444, #b91c1c)' : 'transparent',
     color: tab === t ? 'white' : 'var(--text-secondary)',
     border: tab === t ? 'none' : '1px solid var(--border)',
     borderRadius: t === 'local' ? '6px 0 0 6px' : '0 6px 6px 0',

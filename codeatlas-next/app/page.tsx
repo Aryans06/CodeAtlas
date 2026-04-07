@@ -368,6 +368,44 @@ export default function Home() {
           onNewChat={handleNewChat}
           onSelectSession={handleSelectSession}
           onDeleteSession={handleDeleteSession}
+          onExplainFile={async (filepath) => {
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            setMessages(prev => [
+              ...prev,
+              { role: 'user', content: `💡 Explain file: ${filepath}`, time },
+              { role: 'ai', content: '', time },
+            ]);
+            setIsLoading(true);
+            try {
+              const res = await fetch('/api/explain', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename: filepath }),
+              });
+              const data = await res.json();
+              if (res.ok) {
+                setMessages(prev => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { role: 'ai', content: data.explanation, time };
+                  return updated;
+                });
+              } else {
+                setMessages(prev => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { role: 'ai', content: `❌ ${data.error}`, time };
+                  return updated;
+                });
+              }
+            } catch (err: any) {
+              setMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = { role: 'ai', content: `❌ ${err.message}`, time };
+                return updated;
+              });
+            } finally {
+              setIsLoading(false);
+            }
+          }}
         />
         <ChatPanel
           messages={messages}

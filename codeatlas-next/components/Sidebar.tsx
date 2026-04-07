@@ -19,7 +19,7 @@ function FileIcon({ ext }: { ext: string }) {
   );
 }
 
-function TreeNode({ node, depth }: { node: FileNode; depth: number }) {
+function TreeNode({ node, depth, filePath, onExplainFile }: { node: FileNode; depth: number; filePath: string; onExplainFile?: (path: string) => void }) {
   const [expanded, setExpanded] = useState(node.expanded ?? false);
   const ext = node.name.split('.').pop() || '';
 
@@ -46,7 +46,7 @@ function TreeNode({ node, depth }: { node: FileNode; depth: number }) {
         {expanded && node.children && (
           <div>
             {node.children.map((child, i) => (
-              <TreeNode key={i} node={child} depth={depth + 1} />
+              <TreeNode key={i} node={child} depth={depth + 1} filePath={filePath ? `${filePath}/${child.name}` : child.name} onExplainFile={onExplainFile} />
             ))}
           </div>
         )}
@@ -57,10 +57,21 @@ function TreeNode({ node, depth }: { node: FileNode; depth: number }) {
   return (
     <div
       className="tree-item tree-item--file"
-      style={{ paddingLeft: `${depth * 18 + 8}px` }}
+      style={{ paddingLeft: `${depth * 18 + 8}px`, justifyContent: 'space-between' }}
     >
-      <FileIcon ext={ext} />
-      <span className="tree-item__name">{node.name}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', flex: 1 }}>
+        <FileIcon ext={ext} />
+        <span className="tree-item__name">{node.name}</span>
+      </div>
+      {onExplainFile && (
+        <button
+          className="tree-item__explain-btn"
+          title={`Explain ${node.name}`}
+          onClick={(e) => { e.stopPropagation(); onExplainFile(filePath); }}
+        >
+          💡
+        </button>
+      )}
     </div>
   );
 }
@@ -78,9 +89,10 @@ interface SidebarProps {
   onNewChat: () => void;
   onSelectSession: (id: string) => void;
   onDeleteSession: (id: string) => void;
+  onExplainFile?: (filepath: string) => void;
 }
 
-export default function Sidebar({ fileTree, sessions, activeSessionId, onNewChat, onSelectSession, onDeleteSession }: SidebarProps) {
+export default function Sidebar({ fileTree, sessions, activeSessionId, onNewChat, onSelectSession, onDeleteSession, onExplainFile }: SidebarProps) {
   return (
     <aside className="sidebar" id="sidebar" style={{ display: 'flex', flexDirection: 'column' }}>
       
@@ -95,7 +107,7 @@ export default function Sidebar({ fileTree, sessions, activeSessionId, onNewChat
           </h2>
           <button 
             onClick={onNewChat}
-            style={{ marginTop: '12px', width: '100%', padding: '6px 12px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+            style={{ marginTop: '12px', width: '100%', padding: '6px 12px', background: 'linear-gradient(135deg, #ef4444, #b91c1c)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontWeight: 600, fontSize: '0.8rem' }}
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
             New Chat
@@ -161,7 +173,7 @@ export default function Sidebar({ fileTree, sessions, activeSessionId, onNewChat
         ) : (
           <div className="sidebar__tree" id="fileTree" style={{ flex: '1', overflowY: 'auto' }}>
             {fileTree.map((node, i) => (
-              <TreeNode key={i} node={node} depth={0} />
+              <TreeNode key={i} node={node} depth={0} filePath={node.name} onExplainFile={onExplainFile} />
             ))}
           </div>
         )}
