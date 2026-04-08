@@ -161,13 +161,18 @@ export async function POST(req: NextRequest) {
 
     // Step 3: Chunk, embed, store — reusing existing pipeline
     const chunks = chunkCodebase(fileData);
+    console.log(`🧩 Chunked into ${chunks.length} chunks`);
 
     // Clear previous index for this user
+    console.log('🗑️ Clearing previous index...');
     await vectorStore.clear(userId);
 
-    // Embed
+    // Embed (this is the slow part)
+    console.log(`🔢 Starting embedding of ${chunks.length} chunks (5 in parallel)...`);
     const texts = chunks.map((c: any) => `File: ${c.metadata.file}\n${c.content}`);
     const embeddings = await embedBatch(texts);
+    
+    console.log('💾 Storing in Supabase...');
     await vectorStore.addChunks(userId, chunks, embeddings);
 
     const successfulEmbeddings = embeddings.filter((e: any) => e.embedding).length;

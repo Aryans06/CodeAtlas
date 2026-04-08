@@ -45,9 +45,6 @@ export default function Home() {
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [showArchModal, setShowArchModal] = useState(false);
-  const [archMermaid, setArchMermaid] = useState('');
-  const [archFileCount, setArchFileCount] = useState(0);
-  const [archLoading, setArchLoading] = useState(false);
   const { isSignedIn } = useUser();
 
   // Fetch History Sidebar items
@@ -338,25 +335,7 @@ export default function Home() {
         theme={theme}
         onToggleTheme={toggleTheme}
         onUploadClick={() => setShowModal(true)}
-        onVisualizeClick={async () => {
-          setShowArchModal(true);
-          setArchLoading(true);
-          setArchMermaid('');
-          try {
-            const res = await fetch('/api/visualize', { method: 'POST' });
-            const data = await res.json();
-            if (res.ok) {
-              setArchMermaid(data.mermaid);
-              setArchFileCount(data.fileCount);
-            } else {
-              setArchMermaid(`graph TD\n  A["Error: ${data.error}"]`);
-            }
-          } catch (err: any) {
-            setArchMermaid(`graph TD\n  A["Error: ${err.message}"]`);
-          } finally {
-            setArchLoading(false);
-          }
-        }}
+        onVisualizeClick={() => setShowArchModal(true)}
         indexingMsg={indexingMsg}
         isIndexed={isIndexed}
       />
@@ -424,9 +403,7 @@ export default function Home() {
       )}
       {showArchModal && (
         <ArchModal
-          mermaidCode={archMermaid}
-          fileCount={archFileCount}
-          isLoading={archLoading}
+          fileCount={0}
           onClose={() => setShowArchModal(false)}
         />
       )}

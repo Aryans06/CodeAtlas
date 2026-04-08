@@ -17,7 +17,6 @@ export async function embedText(text: string): Promise<number[]> {
 
   const truncated = text.length > 8000 ? text.slice(0, 8000) : text;
 
-  // We use a high-quality free embedding model hosted on HuggingFace
   const response = await hf.featureExtraction({
     model: 'sentence-transformers/all-MiniLM-L6-v2',
     inputs: truncated,
@@ -26,25 +25,39 @@ export async function embedText(text: string): Promise<number[]> {
   return response as number[];
 }
 
-// Embed multiple texts sequentially
+// Embed multiple texts in parallel batches for speed
 export async function embedBatch(
   texts: string[],
   onProgress?: (done: number, total: number) => void
 ): Promise<{ index: number; embedding: number[] | null }[]> {
   const results: { index: number; embedding: number[] | null }[] = [];
+  const PARALLEL = 5; // Send 5 at a time to HuggingFace
 
-  for (let i = 0; i < texts.length; i++) {
-    try {
-      const embedding = await embedText(texts[i]);
-      results.push({ index: i, embedding });
-    } catch (err: any) {
-      console.error(`⚠️ Failed to embed chunk ${i}: ${err.message}`);
-      results.push({ index: i, embedding: null });
+  for (let i = 0; i < texts.length; i += PARALLEL) {
+    const batch = texts.slice(i, i + PARALLEL);
+    const batchResults = await Promise.allSettled(
+      batch.map(async (text, j) => {
+        const embedding = await embedText(text);
+        return { index: i + j, embedding };
+      })
+    );
+
+    for (const r of batchResults) {
+      if (r.status === 'fulfilled') {
+        results.push(r.value);
+      } else {
+        const failedIndex = i + batchResults.indexOf(r);
+        console.error(`⚠️ Failed to embed chunk ${failedIndex}: ${r.reason?.message || 'Unknown error'}`);
+        results.push({ index: failedIndex, embedding: null });
+      }
     }
-    
-    // Slight delay to be polite to HF free tier
-    if (i < texts.length - 1) await sleep(200);
-    onProgress?.(i + 1, texts.length);
+
+    // Slight delay between batches to be polite to HF free tier
+    if (i + PARALLEL < texts.length) await sleep(150);
+
+    const done = Math.min(i + PARALLEL, texts.length);
+    console.log(`📊 Embedding progress: ${done}/${texts.length}`);
+    onProgress?.(done, texts.length);
   }
 
   console.log(`✅ Embedded ${results.filter(r => r.embedding).length}/${texts.length} chunks`);
