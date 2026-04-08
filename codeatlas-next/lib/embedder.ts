@@ -20,6 +20,7 @@ export async function embedText(text: string): Promise<number[]> {
   const response = await hf.featureExtraction({
     model: 'sentence-transformers/all-MiniLM-L6-v2',
     inputs: truncated,
+    provider: 'hf-inference',
   });
 
   return response as number[];

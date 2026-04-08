@@ -6,11 +6,12 @@ interface NavbarProps {
   onToggleTheme: () => void;
   onUploadClick: () => void;
   onVisualizeClick: () => void;
+  onAuditClick: () => void;
   indexingMsg: string;
   isIndexed: boolean;
 }
 
-export default function Navbar({ theme, onToggleTheme, onUploadClick, onVisualizeClick, indexingMsg, isIndexed }: NavbarProps) {
+export default function Navbar({ theme, onToggleTheme, onUploadClick, onVisualizeClick, onAuditClick, indexingMsg, isIndexed }: NavbarProps) {
   const { isLoaded, isSignedIn } = useUser();
 
   return (
@@ -41,15 +42,24 @@ export default function Navbar({ theme, onToggleTheme, onUploadClick, onVisualiz
       </div>
       <div className="navbar__right">
         {isIndexed && (
-          <button className="btn btn--ghost" onClick={onVisualizeClick} style={{ border: '1px solid rgba(239, 68, 68, 0.3)', color: '#fb7185', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <circle cx="4" cy="4" r="2" stroke="currentColor" strokeWidth="1.2" />
-              <circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="1.2" />
-              <circle cx="8" cy="13" r="2" stroke="currentColor" strokeWidth="1.2" />
-              <path d="M4 6V8L8 11M12 6V8L8 11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-            </svg>
-            Visualize
-          </button>
+          <>
+            <button className="btn btn--ghost" onClick={onAuditClick} style={{ border: '1px solid rgba(52, 211, 153, 0.3)', color: '#34d399', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 1L2 4V7.5C2 11.1 4.5 14.4 8 15C11.5 14.4 14 11.1 14 7.5V4L8 1Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                <path d="M6 8L7.5 9.5L10.5 6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Audit
+            </button>
+            <button className="btn btn--ghost" onClick={onVisualizeClick} style={{ border: '1px solid rgba(239, 68, 68, 0.3)', color: '#fb7185', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <circle cx="4" cy="4" r="2" stroke="currentColor" strokeWidth="1.2" />
+                <circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="1.2" />
+                <circle cx="8" cy="13" r="2" stroke="currentColor" strokeWidth="1.2" />
+                <path d="M4 6V8L8 11M12 6V8L8 11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+              Visualize
+            </button>
+          </>
         )}
         <button className="btn btn--primary" onClick={onUploadClick} id="uploadBtn">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">

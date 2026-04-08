@@ -8,6 +8,7 @@ import ChatPanel from '@/components/ChatPanel';
 import ContextPanel from '@/components/ContextPanel';
 import UploadModal from '@/components/UploadModal';
 import ArchModal from '@/components/ArchModal';
+import AuditModal from '@/components/AuditModal';
 import { useUser } from '@clerk/nextjs';
 import type { SessionInfo } from '@/components/Sidebar';
 
@@ -45,6 +46,7 @@ export default function Home() {
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [showArchModal, setShowArchModal] = useState(false);
+  const [showAuditModal, setShowAuditModal] = useState(false);
   const { isSignedIn } = useUser();
 
   // Fetch History Sidebar items
@@ -336,6 +338,7 @@ export default function Home() {
         onToggleTheme={toggleTheme}
         onUploadClick={() => setShowModal(true)}
         onVisualizeClick={() => setShowArchModal(true)}
+        onAuditClick={() => setShowAuditModal(true)}
         indexingMsg={indexingMsg}
         isIndexed={isIndexed}
       />
@@ -405,6 +408,11 @@ export default function Home() {
         <ArchModal
           fileCount={0}
           onClose={() => setShowArchModal(false)}
+        />
+      )}
+      {showAuditModal && (
+        <AuditModal
+          onClose={() => setShowAuditModal(false)}
         />
       )}
     </>
