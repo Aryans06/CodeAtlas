@@ -17,14 +17,15 @@ export async function POST(req: NextRequest) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
     }
 
-    const { privacyMode } = await req.json();
+    const { privacyMode, repoName } = await req.json();
     const supabase = getSupabase();
 
     // 1. Fetch file context
     const { data: chunks, error } = await supabase
       .from('code_chunks')
       .select('file, content')
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .eq('repo_name', repoName || 'default');
 
     if (error) throw new Error(error.message);
     if (!chunks || chunks.length === 0) {

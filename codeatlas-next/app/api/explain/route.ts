@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { filename, privacyMode } = await req.json();
+    const { filename, privacyMode, repoName } = await req.json();
     if (!filename) return NextResponse.json({ error: 'Filename is required' }, { status: 400 });
 
     const groqKey = process.env.GROQ_API_KEY;
@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
       .from('code_chunks')
       .select('content, start_line, end_line')
       .eq('user_id', userId)
+      .eq('repo_name', repoName || 'default')
       .eq('file', filename)
       .order('start_line');
 

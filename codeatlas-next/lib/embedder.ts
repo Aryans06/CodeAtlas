@@ -32,10 +32,13 @@ export async function embedBatch(
   onProgress?: (done: number, total: number) => void
 ): Promise<{ index: number; embedding: number[] | null }[]> {
   const results: { index: number; embedding: number[] | null }[] = [];
-  const PARALLEL = 5; // Send 5 at a time to HuggingFace
+  
+  // Send 25 at a time concurrently to HuggingFace
+  const BATCH_SIZE = 25; 
 
-  for (let i = 0; i < texts.length; i += PARALLEL) {
-    const batch = texts.slice(i, i + PARALLEL);
+  for (let i = 0; i < texts.length; i += BATCH_SIZE) {
+    const batch = texts.slice(i, i + BATCH_SIZE);
+    
     const batchResults = await Promise.allSettled(
       batch.map(async (text, j) => {
         const embedding = await embedText(text);
@@ -48,17 +51,17 @@ export async function embedBatch(
         results.push(r.value);
       } else {
         const failedIndex = i + batchResults.indexOf(r);
-        console.error(`⚠️ Failed to embed chunk ${failedIndex}: ${r.reason?.message || 'Unknown error'}`);
+        console.error(`⚠️ Failed to embed chunk ${failedIndex}:`, r.reason?.message || 'Unknown error');
         results.push({ index: failedIndex, embedding: null });
       }
     }
 
-    // Slight delay between batches to be polite to HF free tier
-    if (i + PARALLEL < texts.length) await sleep(150);
+    // A tiny delay to be polite to HF Rate Limits
+    if (i + BATCH_SIZE < texts.length) await sleep(100);
 
-    const done = Math.min(i + PARALLEL, texts.length);
+    const done = Math.min(i + BATCH_SIZE, texts.length);
+    if (onProgress) onProgress(done, texts.length);
     console.log(`📊 Embedding progress: ${done}/${texts.length}`);
-    onProgress?.(done, texts.length);
   }
 
   console.log(`✅ Embedded ${results.filter(r => r.embedding).length}/${texts.length} chunks`);

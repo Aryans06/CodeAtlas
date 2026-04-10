@@ -46,6 +46,10 @@ export async function POST(req: NextRequest) {
 
     console.log(`📁 Received ${files.length} files from upload`);
 
+    // Determine repo name from the root folder of the first file, or fallback
+    const firstPath = (files[0] as any).webkitRelativePath || files[0].name;
+    const repoName = firstPath.includes('/') ? firstPath.split('/')[0] : 'local_upload';
+
     // Remove the old local vectorStore.clear()
     indexingState.status = 'indexing';
     indexingState.progress = 0;
@@ -87,8 +91,8 @@ export async function POST(req: NextRequest) {
     indexingState.total = chunks.length;
     indexingState.message = `Embedding ${chunks.length} chunks...`;
 
-    // Drop existing vector entries for this user before uploading fresh codebase
-    await vectorStore.clear(userId);
+    // Drop existing vector entries for this user & repo before uploading fresh codebase
+    await vectorStore.clear(userId, repoName);
 
     // Embed with retry logic
     const texts = chunks.map((c: any) => `File: ${c.metadata.file}\n${c.content}`);
@@ -98,7 +102,7 @@ export async function POST(req: NextRequest) {
       indexingState.message = `Embedding chunk ${done}/${total}...`;
     });
 
-    await vectorStore.addChunks(userId, chunks, embeddings);
+    await vectorStore.addChunks(userId, repoName, chunks, embeddings);
 
     const successfulEmbeddings = embeddings.filter((e: any) => e.embedding).length;
     indexingState.status = 'ready';
@@ -106,9 +110,10 @@ export async function POST(req: NextRequest) {
     indexingState.total = chunks.length;
     indexingState.message = `Indexed ${successfulEmbeddings} chunks from ${fileData.length} files`;
 
-    const stats = await vectorStore.getStatus(userId);
+    const stats = await vectorStore.getStatus(userId, repoName);
     return NextResponse.json({
       success: true,
+      repoName: repoName,
       stats: {
         filesProcessed: fileData.length,
         filesSkipped: skipped,

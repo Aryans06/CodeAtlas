@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
     const privacyMode = body.privacyMode || false;
+    const repoName = body.repoName || 'default';
 
     if (!hfToken) {
       return NextResponse.json({ error: 'Missing HF_TOKEN' }, { status: 500 });
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     for (const threat of THREAT_VECTORS) {
       const queryEmbedding = await embedText(threat.query);
-      const results = await vectorStore.search(userId, queryEmbedding, 3);
+      const results = await vectorStore.search(userId, repoName, queryEmbedding, 3);
       // Only keep results with decent relevance
       const relevant = results.filter((r: any) => r.score > 0.25);
       if (relevant.length > 0) {

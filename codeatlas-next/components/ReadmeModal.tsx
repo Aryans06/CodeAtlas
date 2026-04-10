@@ -3,10 +3,11 @@ import { useState, useEffect, useRef } from 'react';
 
 interface ReadmeModalProps {
   privacyMode: boolean;
+  repoName: string | null;
   onClose: () => void;
 }
 
-export default function ReadmeModal({ privacyMode, onClose }: ReadmeModalProps) {
+export default function ReadmeModal({ privacyMode, repoName, onClose }: ReadmeModalProps) {
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -21,7 +22,7 @@ export default function ReadmeModal({ privacyMode, onClose }: ReadmeModalProps) 
         const res = await fetch('/api/readme', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ privacyMode }),
+          body: JSON.stringify({ privacyMode, repoName }),
         });
 
         if (!res.ok) {

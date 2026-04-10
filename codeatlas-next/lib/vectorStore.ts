@@ -21,7 +21,7 @@ const getSupabase = () => {
 };
 
 export const vectorStore = {
-  async addChunks(userId: string, chunks: Chunk[], embeddings: { index: number; embedding: number[] | null }[]) {
+  async addChunks(userId: string, repoName: string, chunks: Chunk[], embeddings: { index: number; embedding: number[] | null }[]) {
     const supabase = getSupabase();
     
     const rows = [];
@@ -33,6 +33,7 @@ export const vectorStore = {
         user_id: userId,
         content: chunks[i].content,
         file: chunks[i].metadata.file,
+        repo_name: repoName,
         language: chunks[i].metadata.language,
         start_line: chunks[i].metadata.startLine,
         end_line: chunks[i].metadata.endLine,
@@ -57,14 +58,15 @@ export const vectorStore = {
     console.log(`📊 Supabase: ${rows.length} entries indexed for user ${userId}`);
   },
 
-  async search(userId: string, queryEmbedding: number[], topK = 5) {
+  async search(userId: string, repoName: string, queryEmbedding: number[], topK = 5) {
     const supabase = getSupabase();
     
     const { data, error } = await supabase.rpc('match_code_chunks', {
       query_embedding: queryEmbedding,
       match_threshold: 0.1, // accept anything above 10% similarity
       match_count: topK,
-      p_user_id: userId
+      p_user_id: userId,
+      p_repo_name: repoName || 'default'
     });
 
     if (error) {
@@ -86,9 +88,10 @@ export const vectorStore = {
     }));
   },
 
-  async clear(userId: string) {
+  async clear(userId: string, repoName: string) {
     const supabase = getSupabase();
-    const { error } = await supabase.from('code_chunks').delete().eq('user_id', userId);
+    // Only delete chunks for this user AND this specific repository
+    const { error } = await supabase.from('code_chunks').delete().eq('user_id', userId).eq('repo_name', repoName);
     if (error) {
       console.error('Supabase Delete Error:', error);
       throw new Error(`DB Reset Error: ${error.message}`);
@@ -96,13 +99,33 @@ export const vectorStore = {
     console.log(`🗑️ Database chunks cleared for user ${userId}`);
   },
 
-  async getStatus(userId: string) {
+  async getStatus(userId: string, currentRepoUrlQuery?: string) {
     const supabase = getSupabase();
-    // Fetch unique filenames across the user's chunks
+
+    // 1. Fetch available repositories
+    const { data: reposData, error: reposError } = await supabase
+      .from('code_chunks')
+      .select('repo_name')
+      .eq('user_id', userId);
+
+    if (reposError) throw new Error(`DB Repos Error: ${reposError.message}`);
+    const availableRepos = Array.from(new Set((reposData || []).map(r => r.repo_name)));
+
+    if (availableRepos.length === 0) {
+      return { isIndexed: false, totalChunks: 0, files: [], availableRepos: [], currentRepo: null };
+    }
+
+    // Determine target repo: whatever was passed in, or default to the first one available
+    const targetRepo = currentRepoUrlQuery && availableRepos.includes(currentRepoUrlQuery)
+      ? currentRepoUrlQuery
+      : availableRepos[0];
+
+    // 2. Fetch data specifically for the target repo
     const { data: fileData, error: fileError } = await supabase
       .from('code_chunks')
       .select('file')
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .eq('repo_name', targetRepo);
 
     if (fileError) throw new Error(`DB Status Error: ${fileError.message}`);
     
@@ -112,7 +135,9 @@ export const vectorStore = {
     return {
       isIndexed: uniqueFiles.length > 0,
       totalChunks: fileData?.length || 0,
-      files: uniqueFiles
+      files: uniqueFiles,
+      availableRepos,
+      currentRepo: targetRepo
     };
   }
 };

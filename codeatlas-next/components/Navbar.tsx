@@ -11,9 +11,12 @@ interface NavbarProps {
   onTogglePrivacy: () => void;
   indexingMsg: string;
   isIndexed: boolean;
+  availableRepos: string[];
+  currentRepo: string | null;
+  onSelectRepo: (repo: string) => void;
 }
 
-export default function Navbar({ theme, onToggleTheme, onUploadClick, onVisualizeClick, onAuditClick, privacyMode, onTogglePrivacy, indexingMsg, isIndexed }: NavbarProps) {
+export default function Navbar({ theme, onToggleTheme, onUploadClick, onVisualizeClick, onAuditClick, privacyMode, onTogglePrivacy, indexingMsg, isIndexed, availableRepos, currentRepo, onSelectRepo }: NavbarProps) {
   const { isLoaded, isSignedIn } = useUser();
 
   return (
@@ -43,6 +46,29 @@ export default function Navbar({ theme, onToggleTheme, onUploadClick, onVisualiz
         )}
       </div>
       <div className="navbar__right">
+        {availableRepos && availableRepos.length > 0 && (
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginRight: '8px' }}>
+            <select 
+              value={currentRepo || ''} 
+              onChange={(e) => onSelectRepo(e.target.value)}
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-default)',
+                borderRadius: '8px',
+                padding: '6px 10px',
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-sans)',
+                outline: 'none'
+              }}
+            >
+              {availableRepos.map(repo => (
+                <option key={repo} value={repo}>{repo}</option>
+              ))}
+            </select>
+          </div>
+        )}
         {isIndexed && (
           <>
             <button className="btn btn--ghost" onClick={onAuditClick} style={{ border: '1px solid rgba(52, 211, 153, 0.3)', color: '#34d399', display: 'flex', alignItems: 'center', gap: '6px' }}>

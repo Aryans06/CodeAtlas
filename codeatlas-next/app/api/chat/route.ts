@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized. Please sign in.' }, { status: 401 });
 
-    const { question, sessionId, isFirstMessage, privacyMode } = await req.json();
+    const { question, sessionId, isFirstMessage, privacyMode, repoName } = await req.json();
 
     if (!question) {
       return NextResponse.json({ error: 'Question is required' }, { status: 400 });
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     if (!isEmbedderReady()) initEmbedder(hfToken);
     if (!privacyMode && !isAIReady() && groqKey) initAI(groqKey);
 
-    const dbStatus = await vectorStore.getStatus(userId);
+    const dbStatus = await vectorStore.getStatus(userId, repoName);
     if (!dbStatus.isIndexed) {
       return NextResponse.json(
         { error: 'No codebase indexed. Upload files first.' },
@@ -49,8 +49,8 @@ export async function POST(req: NextRequest) {
     // Embed the question
     const queryEmbedding = await embedText(question);
 
-    // Search for relevant code chunks
-    const results = await vectorStore.search(userId, queryEmbedding, 5);
+    // Search for relevant code chunks in the specific repo
+    const results = await vectorStore.search(userId, repoName, queryEmbedding, 5);
     console.log(
       `🔍 Found ${results.length} chunks (top: ${((results[0]?.score ?? 0) * 100).toFixed(1)}%)`
     );

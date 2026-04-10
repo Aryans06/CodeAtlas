@@ -50,6 +50,8 @@ export default function Home() {
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [showReadmeModal, setShowReadmeModal] = useState(false);
   const [privacyMode, setPrivacyMode] = useState(false);
+  const [currentRepo, setCurrentRepo] = useState<string | null>(null);
+  const [availableRepos, setAvailableRepos] = useState<string[]>([]);
   const { isSignedIn } = useUser();
 
   const handleTogglePrivacy = async () => {
@@ -131,23 +133,36 @@ export default function Home() {
     }
   };
 
+  const checkStatus = useCallback(async (repoQuery?: string) => {
+    if (!isSignedIn) return;
+    try {
+      const qs = repoQuery ? `?repoName=${encodeURIComponent(repoQuery)}` : '';
+      const res = await fetch(`/api/status${qs}`);
+      const data = await res.json();
+      if (data.isIndexed) {
+        setIsIndexed(true);
+        setCurrentRepo(data.currentRepo || null);
+        setAvailableRepos(data.availableRepos || []);
+        setIndexingMsg(`✅ DB ready: ${data.totalChunks} chunks loaded`);
+        if (data.files && data.files.length > 0) {
+          setFileTree(buildFileTree(data.files));
+        }
+      } else {
+        setIsIndexed(false);
+        setFileTree([]);
+        // Do NOT wipe out availableRepos, just fallback to what the DB says
+        setCurrentRepo(data.currentRepo || null);
+        setAvailableRepos(data.availableRepos || []);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, [isSignedIn]);
+
   // Check DB status on mount or sign in
   useEffect(() => {
     if (isSignedIn) {
-      fetch('/api/status')
-        .then(res => res.json())
-        .then(data => {
-          if (data.isIndexed) {
-            setIsIndexed(true);
-            setIndexingMsg(`✅ DB ready: ${data.totalChunks} chunks loaded`);
-            if (data.files && data.files.length > 0) {
-              setFileTree(buildFileTree(data.files));
-            }
-            setTimeout(() => setIndexingMsg(''), 3000);
-          }
-        })
-        .catch(console.error);
-        
+      checkStatus();
       loadSessions();
     } else {
       setIsIndexed(false);
@@ -155,8 +170,10 @@ export default function Home() {
       setMessages([]);
       setSessions([]);
       setActiveSessionId(null);
+      setCurrentRepo(null);
+      setAvailableRepos([]);
     }
-  }, [isSignedIn, loadSessions]);
+  }, [isSignedIn, loadSessions, checkStatus]);
 
   // Theme
   useEffect(() => {
@@ -206,6 +223,7 @@ export default function Home() {
           sessionId: targetSessionId,
           isFirstMessage,
           privacyMode,
+          repoName: currentRepo
         }),
       });
 
@@ -297,7 +315,7 @@ export default function Home() {
       setIsLoading(false);
       if (isFirstMessage) loadSessions(); // Refresh Sidebar list instantly to show new chat
     }
-  }, [isLoading, activeSessionId, messages.length, loadSessions]);
+  }, [isLoading, activeSessionId, messages.length, loadSessions, currentRepo, privacyMode]);
 
   // Upload files
   const handleUpload = useCallback(async (files: File[]) => {
@@ -310,10 +328,9 @@ export default function Home() {
       const res = await fetch('/api/upload', { method: 'POST', body: formData });
       const data = await res.json();
       if (res.ok) {
-        setIsIndexed(true);
-        setIndexingMsg(`✅ Indexed ${data.stats.chunksCreated} chunks`);
-        setFileTree(buildFileTree(files.map(f => (f as any).webkitRelativePath || f.name)));
+        await checkStatus(data.repoName);
         setShowModal(false);
+        setIndexingMsg(`✅ Indexed ${data.stats.chunksCreated} chunks`);
         setTimeout(() => setIndexingMsg(''), 3000);
       } else {
         setIndexingMsg(`❌ ${data.error}`);
@@ -321,7 +338,7 @@ export default function Home() {
     } catch (err: any) {
       setIndexingMsg(`❌ ${err.message}`);
     }
-  }, []);
+  }, [checkStatus]);
 
   // GitHub import
   const handleGitHubImport = useCallback(async (url: string) => {
@@ -334,20 +351,9 @@ export default function Home() {
       });
       const data = await res.json();
       if (res.ok) {
-        setIsIndexed(true);
-        setIndexingMsg(`✅ Imported ${data.repoName}: ${data.stats.chunksCreated} chunks from ${data.stats.filesProcessed} files`);
-        // Rebuild file tree from the stats
-        if (data.stats.files && data.stats.files.length > 0) {
-          setFileTree(buildFileTree(data.stats.files));
-        } else {
-          // Fallback: fetch status to get file list
-          const statusRes = await fetch('/api/status');
-          if (statusRes.ok) {
-            const statusData = await statusRes.json();
-            if (statusData.files) setFileTree(buildFileTree(statusData.files));
-          }
-        }
+        await checkStatus(data.repoName);
         setShowModal(false);
+        setIndexingMsg(`✅ Imported ${data.repoName}: ${data.stats.chunksCreated} chunks`);
         setTimeout(() => setIndexingMsg(''), 4000);
       } else {
         setIndexingMsg(`❌ ${data.error}`);
@@ -355,7 +361,7 @@ export default function Home() {
     } catch (err: any) {
       setIndexingMsg(`❌ ${err.message}`);
     }
-  }, []);
+  }, [checkStatus]);
 
   return (
     <>
@@ -370,6 +376,9 @@ export default function Home() {
         onTogglePrivacy={handleTogglePrivacy}
         indexingMsg={indexingMsg}
         isIndexed={isIndexed}
+        currentRepo={currentRepo}
+        availableRepos={availableRepos}
+        onSelectRepo={(repo) => checkStatus(repo)}
       />
       <main className="app" id="app">
         <Sidebar 
@@ -392,7 +401,7 @@ export default function Home() {
               const res = await fetch('/api/explain', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ filename: filepath, privacyMode }),
+                body: JSON.stringify({ filename: filepath, privacyMode, repoName: currentRepo }),
               });
               const data = await res.json();
               if (res.ok) {
@@ -445,11 +454,13 @@ export default function Home() {
         <AuditModal
           privacyMode={privacyMode}
           onClose={() => setShowAuditModal(false)}
+          repoName={currentRepo}
         />
       )}
       {showReadmeModal && (
         <ReadmeModal
           privacyMode={privacyMode}
+          repoName={currentRepo}
           onClose={() => setShowReadmeModal(false)}
         />
       )}

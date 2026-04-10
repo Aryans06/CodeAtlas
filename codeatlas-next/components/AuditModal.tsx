@@ -11,7 +11,8 @@ interface Finding {
 }
 
 interface AuditModalProps {
-  privacyMode?: boolean;
+  privacyMode: boolean;
+  repoName: string | null;
   onClose: () => void;
 }
 
@@ -21,7 +22,7 @@ const severityConfig = {
   info: { emoji: '🔵', color: '#38bdf8', bg: 'rgba(56,189,248,0.08)', border: 'rgba(56,189,248,0.25)', label: 'Info' },
 };
 
-export default function AuditModal({ privacyMode, onClose }: AuditModalProps) {
+export default function AuditModal({ privacyMode, repoName, onClose }: AuditModalProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [summary, setSummary] = useState('');
@@ -34,7 +35,7 @@ export default function AuditModal({ privacyMode, onClose }: AuditModalProps) {
         const res = await fetch('/api/audit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ privacyMode }),
+          body: JSON.stringify({ privacyMode, repoName }),
         });
         const data = await res.json();
         if (res.ok) {

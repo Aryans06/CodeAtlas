@@ -163,9 +163,11 @@ export async function POST(req: NextRequest) {
     const chunks = chunkCodebase(fileData);
     console.log(`🧩 Chunked into ${chunks.length} chunks`);
 
-    // Clear previous index for this user
-    console.log('🗑️ Clearing previous index...');
-    await vectorStore.clear(userId);
+    const repoName = `${owner}/${repo}`;
+
+    // Clear previous index for this user AND this specific repo
+    console.log(`🗑️ Clearing previous index for ${repoName}...`);
+    await vectorStore.clear(userId, repoName);
 
     // Embed (this is the slow part)
     console.log(`🔢 Starting embedding of ${chunks.length} chunks (5 in parallel)...`);
@@ -173,10 +175,10 @@ export async function POST(req: NextRequest) {
     const embeddings = await embedBatch(texts);
     
     console.log('💾 Storing in Supabase...');
-    await vectorStore.addChunks(userId, chunks, embeddings);
+    await vectorStore.addChunks(userId, repoName, chunks, embeddings);
 
     const successfulEmbeddings = embeddings.filter((e: any) => e.embedding).length;
-    const stats = await vectorStore.getStatus(userId);
+    const stats = await vectorStore.getStatus(userId, repoName);
 
     console.log(`🎉 GitHub import complete: ${fileData.length} files → ${chunks.length} chunks → ${successfulEmbeddings} embeddings`);
 
