@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized. Please sign in.' }, { status: 401 });
 
-    const { question, sessionId, isFirstMessage } = await req.json();
+    const { question, sessionId, isFirstMessage, privacyMode } = await req.json();
 
     if (!question) {
       return NextResponse.json({ error: 'Question is required' }, { status: 400 });
@@ -27,11 +27,14 @@ export async function POST(req: NextRequest) {
     // Initialize services if they haven't been yet (e.g. after hot reload)
     const hfToken = process.env.HF_TOKEN;
     const groqKey = process.env.GROQ_API_KEY;
-    if (!hfToken || !groqKey) {
-      return NextResponse.json({ error: 'Missing HF_TOKEN or GROQ_API_KEY in .env.local' }, { status: 500 });
+    if (!hfToken) {
+      return NextResponse.json({ error: 'Missing HF_TOKEN in .env.local' }, { status: 500 });
+    }
+    if (!privacyMode && !groqKey) {
+      return NextResponse.json({ error: 'Missing GROQ_API_KEY in .env.local' }, { status: 500 });
     }
     if (!isEmbedderReady()) initEmbedder(hfToken);
-    if (!isAIReady()) initAI(groqKey);
+    if (!privacyMode && !isAIReady() && groqKey) initAI(groqKey);
 
     const dbStatus = await vectorStore.getStatus(userId);
     if (!dbStatus.isIndexed) {
@@ -53,7 +56,7 @@ export async function POST(req: NextRequest) {
     );
 
     // Generate streaming AI response
-    const { stream: groqStream, sources } = await generateStreamingResponse(question, results);
+    const { stream: aiStream, sources } = await generateStreamingResponse(question, results, privacyMode);
 
     // Create a ReadableStream that pipes Groq tokens as Server-Sent Events
     const encoder = new TextEncoder();
@@ -61,7 +64,7 @@ export async function POST(req: NextRequest) {
       async start(controller) {
         let aiContent = '';
         try {
-          for await (const chunk of groqStream) {
+          for await (const chunk of aiStream as any) {
             const token = chunk.choices[0]?.delta?.content;
             if (token) {
               aiContent += token;

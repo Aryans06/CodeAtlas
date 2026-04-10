@@ -196,6 +196,15 @@ body{font-family:var(--font-sans);background:var(--bg-primary);color:var(--text-
 .chat__welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:42vh;text-align:center;position:relative;animation:fadeUp 0.5s var(--ease-out);padding:var(--space-xl) 0}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 .chat__welcome-glow{position:absolute;top:35%;left:50%;transform:translate(-50%,-50%);width:400px;height:400px;background:radial-gradient(circle,var(--accent-glow) 0%,transparent 60%);pointer-events:none;opacity:0.5;animation:breathe 6s ease-in-out infinite}
+/* Privacy Toggle */
+.privacy-toggle{display:flex;align-items:center;gap:8px;background:transparent;border:1px solid var(--border-default);border-radius:var(--radius-full);padding:4px 12px 4px 6px;cursor:pointer;transition:all 250ms var(--ease-spring);font-family:var(--font-sans)}
+.privacy-toggle:hover{border-color:rgba(52,211,153,0.4);background:rgba(52,211,153,0.04)}
+.privacy-toggle__track{position:relative;width:32px;height:18px;border-radius:9px;background:var(--border-default);transition:background 250ms}
+.privacy-toggle__track--active{background:#34d399}
+.privacy-toggle__thumb{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform 250ms var(--ease-spring);box-shadow:0 1px 3px rgba(0,0,0,0.3)}
+.privacy-toggle__track--active .privacy-toggle__thumb{transform:translateX(14px)}
+.privacy-toggle__label{font-size:0.72rem;font-weight:500;color:var(--text-secondary);white-space:nowrap}
+
 @keyframes breathe{0%,100%{opacity:0.25;transform:translate(-50%,-50%) scale(1)}50%{opacity:0.55;transform:translate(-50%,-50%) scale(1.12)}}
 .chat__welcome-icon{margin-bottom:var(--space-md);position:relative;z-index:1;opacity:0.9}
 .chat__welcome-tag{font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:#ef4444;margin-bottom:10px;position:relative;z-index:1;background:rgba(239,68,68,0.1);display:inline-block;padding:3px 12px;border-radius:var(--radius-full);border:1px solid rgba(239,68,68,0.2);animation:tagPulse 3s ease-in-out infinite}

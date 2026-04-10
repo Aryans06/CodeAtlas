@@ -18,10 +18,11 @@ const TABS: TabInfo[] = [
 
 interface ArchModalProps {
   fileCount: number;
+  privacyMode?: boolean;
   onClose: () => void;
 }
 
-export default function ArchModal({ fileCount, onClose }: ArchModalProps) {
+export default function ArchModal({ fileCount, privacyMode, onClose }: ArchModalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   const [renderError, setRenderError] = useState('');
@@ -46,7 +47,7 @@ export default function ArchModal({ fileCount, onClose }: ArchModalProps) {
       const res = await fetch('/api/visualize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type }),
+        body: JSON.stringify({ type, privacyMode }),
       });
       const data = await res.json();
       if (res.ok) {

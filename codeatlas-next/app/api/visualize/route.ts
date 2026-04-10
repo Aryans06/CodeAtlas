@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import Groq from 'groq-sdk';
+import { ollamaChat } from '@/lib/ollama';
 
 const getSupabase = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -36,7 +37,7 @@ function buildFileMap(chunks: any[]) {
 }
 
 // Generate DEPENDENCY GRAPH
-async function generateDependencyGraph(chunks: any[], groqKey: string) {
+async function generateDependencyGraph(chunks: any[], groqKey: string, privacyMode = false) {
   const fileMap = buildFileMap(chunks);
   const fileSummaries: string[] = [];
   for (const [file, contents] of fileMap) {
@@ -46,12 +47,10 @@ async function generateDependencyGraph(chunks: any[], groqKey: string) {
   const fileList = Array.from(fileMap.keys());
   const summaryText = fileSummaries.slice(0, 40).join('\n\n');
 
-  const groq = new Groq({ apiKey: groqKey });
-  const completion = await groq.chat.completions.create({
-    messages: [
-      {
-        role: 'system',
-        content: `You are a software architecture expert. Given a list of source files and their import statements, generate a Mermaid.js flowchart diagram showing the dependency/architecture graph.
+  const messages = [
+    {
+      role: 'system' as const,
+      content: `You are a software architecture expert. Given a list of source files and their import statements, generate a Mermaid.js flowchart diagram showing the dependency/architecture graph.
 
 CRITICAL MERMAID SYNTAX RULES:
 1. Output ONLY valid Mermaid syntax. Start with "graph TD". No markdown fences.
@@ -63,18 +62,27 @@ CRITICAL MERMAID SYNTAX RULES:
 4. Show arrows from importing file → imported file (e.g., A -->|uses| B).
 5. Quote filenames with extensions in node definitions like: A["file.ts"]
 6. Keep it clean — focus only on the most important architectural connections.`
-      },
-      {
-        role: 'user',
-        content: `Here are ${fileList.length} source files and their import sections:\n\n${summaryText}\n\nFull file list:\n${fileList.join('\n')}\n\nGenerate the Mermaid.js architecture diagram now.`
-      }
-    ],
-    model: 'llama-3.3-70b-versatile',
-    temperature: 0.1,
-    max_tokens: 2000,
-  });
+    },
+    {
+      role: 'user' as const,
+      content: `Here are ${fileList.length} source files and their import sections:\n\n${summaryText}\n\nFull file list:\n${fileList.join('\n')}\n\nGenerate the Mermaid.js architecture diagram now.`
+    }
+  ];
 
-  let mermaidCode = completion.choices[0]?.message?.content || '';
+  let mermaidCode: string;
+  if (privacyMode) {
+    console.log('🔒 Privacy Mode: Visualize (dependency) via Ollama');
+    mermaidCode = await ollamaChat(messages, 'llama3:8b', { temperature: 0.1, max_tokens: 2000 });
+  } else {
+    const groq = new Groq({ apiKey: groqKey });
+    const completion = await groq.chat.completions.create({
+      messages,
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.1,
+      max_tokens: 2000,
+    });
+    mermaidCode = completion.choices[0]?.message?.content || '';
+  }
   mermaidCode = mermaidCode.replace(/^```mermaid\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
   // Fix common AI syntax errors:
   // 1. -->|label|> should be -->|label|  (remove trailing >)
@@ -125,7 +133,7 @@ function extToLabel(ext: string): string {
 }
 
 // Generate DATA FLOW SEQUENCE DIAGRAM
-async function generateDataFlow(chunks: any[], groqKey: string) {
+async function generateDataFlow(chunks: any[], groqKey: string, privacyMode = false) {
   const fileMap = buildFileMap(chunks);
   const fileSummaries: string[] = [];
   for (const [file, contents] of fileMap) {
@@ -135,12 +143,10 @@ async function generateDataFlow(chunks: any[], groqKey: string) {
   const fileList = Array.from(fileMap.keys());
   const summaryText = fileSummaries.slice(0, 30).join('\n\n');
 
-  const groq = new Groq({ apiKey: groqKey });
-  const completion = await groq.chat.completions.create({
-    messages: [
-      {
-        role: 'system',
-        content: `You are a software architecture expert. Given a list of source files and their imports, generate a Mermaid.js SEQUENCE DIAGRAM showing a typical request data flow through the application.
+  const messages = [
+    {
+      role: 'system' as const,
+      content: `You are a software architecture expert. Given a list of source files and their imports, generate a Mermaid.js SEQUENCE DIAGRAM showing a typical request data flow through the application.
 
 CRITICAL MERMAID SYNTAX RULES:
 1. Output ONLY valid Mermaid syntax. Start with "sequenceDiagram". No markdown fences.
@@ -151,18 +157,27 @@ CRITICAL MERMAID SYNTAX RULES:
 6. Include the most important actors like: Browser, API, VectorDB, AI
 7. Show a realistic request lifecycle for the main feature of the app.
 8. Keep it to 10-15 interactions max. Keep labels short.`
-      },
-      {
-        role: 'user',
-        content: `Here are ${fileList.length} source files:\n\n${summaryText}\n\nFull file list:\n${fileList.join('\n')}\n\nGenerate a Mermaid.js sequence diagram showing the main data flow now.`
-      }
-    ],
-    model: 'llama-3.3-70b-versatile',
-    temperature: 0.2,
-    max_tokens: 1500,
-  });
+    },
+    {
+      role: 'user' as const,
+      content: `Here are ${fileList.length} source files:\n\n${summaryText}\n\nFull file list:\n${fileList.join('\n')}\n\nGenerate a Mermaid.js sequence diagram showing the main data flow now.`
+    }
+  ];
 
-  let mermaidCode = completion.choices[0]?.message?.content || '';
+  let mermaidCode: string;
+  if (privacyMode) {
+    console.log('🔒 Privacy Mode: Visualize (dataflow) via Ollama');
+    mermaidCode = await ollamaChat(messages, 'llama3:8b', { temperature: 0.2, max_tokens: 1500 });
+  } else {
+    const groq = new Groq({ apiKey: groqKey });
+    const completion = await groq.chat.completions.create({
+      messages,
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.2,
+      max_tokens: 1500,
+    });
+    mermaidCode = completion.choices[0]?.message?.content || '';
+  }
   mermaidCode = mermaidCode.replace(/^```mermaid\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
   // Strip activate/deactivate lines — they cause mismatched pair errors
   mermaidCode = mermaidCode.replace(/^\s*(activate|deactivate)\s+.*$/gm, '').trim();
@@ -183,6 +198,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
     const type = body.type || 'dependency';
+    const privacyMode = body.privacyMode || false;
 
     const chunks = await fetchChunks(userId);
 
@@ -192,11 +208,11 @@ export async function POST(req: NextRequest) {
         result = generateFileDistribution(chunks);
         break;
       case 'sequence':
-        result = await generateDataFlow(chunks, groqKey);
+        result = await generateDataFlow(chunks, groqKey, privacyMode);
         break;
       case 'dependency':
       default:
-        result = await generateDependencyGraph(chunks, groqKey);
+        result = await generateDependencyGraph(chunks, groqKey, privacyMode);
         break;
     }
 

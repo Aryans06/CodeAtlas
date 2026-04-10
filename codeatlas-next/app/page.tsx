@@ -47,7 +47,31 @@ export default function Home() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [showArchModal, setShowArchModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
+  const [privacyMode, setPrivacyMode] = useState(false);
   const { isSignedIn } = useUser();
+
+  const handleTogglePrivacy = async () => {
+    if (!privacyMode) {
+      // Switching to Privacy Mode — check if Ollama is running
+      try {
+        const res = await fetch('/api/ollama-status');
+        const data = await res.json();
+        if (!data.available) {
+          alert('⚠️ Ollama is not running!\n\nTo use Privacy Mode:\n1. Install Ollama: https://ollama.com\n2. Run: ollama serve\n3. Pull a model: ollama pull llama3:8b\n\nThen try again.');
+          return;
+        }
+        if (data.models.length === 0) {
+          alert('⚠️ No models found in Ollama.\n\nRun: ollama pull llama3:8b');
+          return;
+        }
+        console.log('🔒 Privacy Mode enabled. Available models:', data.models);
+      } catch {
+        alert('⚠️ Could not reach Ollama. Make sure it\'s running on localhost:11434');
+        return;
+      }
+    }
+    setPrivacyMode(prev => !prev);
+  };
 
   // Fetch History Sidebar items
   const loadSessions = useCallback(async () => {
@@ -178,7 +202,8 @@ export default function Home() {
         body: JSON.stringify({ 
           question: text, 
           sessionId: targetSessionId,
-          isFirstMessage 
+          isFirstMessage,
+          privacyMode,
         }),
       });
 
@@ -339,6 +364,8 @@ export default function Home() {
         onUploadClick={() => setShowModal(true)}
         onVisualizeClick={() => setShowArchModal(true)}
         onAuditClick={() => setShowAuditModal(true)}
+        privacyMode={privacyMode}
+        onTogglePrivacy={handleTogglePrivacy}
         indexingMsg={indexingMsg}
         isIndexed={isIndexed}
       />
@@ -362,7 +389,7 @@ export default function Home() {
               const res = await fetch('/api/explain', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ filename: filepath }),
+                body: JSON.stringify({ filename: filepath, privacyMode }),
               });
               const data = await res.json();
               if (res.ok) {
@@ -407,11 +434,13 @@ export default function Home() {
       {showArchModal && (
         <ArchModal
           fileCount={0}
+          privacyMode={privacyMode}
           onClose={() => setShowArchModal(false)}
         />
       )}
       {showAuditModal && (
         <AuditModal
+          privacyMode={privacyMode}
           onClose={() => setShowAuditModal(false)}
         />
       )}

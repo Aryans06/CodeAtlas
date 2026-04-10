@@ -7,11 +7,13 @@ interface NavbarProps {
   onUploadClick: () => void;
   onVisualizeClick: () => void;
   onAuditClick: () => void;
+  privacyMode: boolean;
+  onTogglePrivacy: () => void;
   indexingMsg: string;
   isIndexed: boolean;
 }
 
-export default function Navbar({ theme, onToggleTheme, onUploadClick, onVisualizeClick, onAuditClick, indexingMsg, isIndexed }: NavbarProps) {
+export default function Navbar({ theme, onToggleTheme, onUploadClick, onVisualizeClick, onAuditClick, privacyMode, onTogglePrivacy, indexingMsg, isIndexed }: NavbarProps) {
   const { isLoaded, isSignedIn } = useUser();
 
   return (
@@ -67,6 +69,20 @@ export default function Navbar({ theme, onToggleTheme, onUploadClick, onVisualiz
             <path d="M1 11V13C1 14.1 1.9 15 3 15H13C14.1 15 15 14.1 15 13V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           {isIndexed ? 'Re-upload' : 'Upload Codebase'}
+        </button>
+
+        {/* Privacy Mode Toggle */}
+        <button
+          className="privacy-toggle"
+          onClick={onTogglePrivacy}
+          title={privacyMode ? 'Privacy Mode: Using local Ollama' : 'Cloud Mode: Using Groq API'}
+        >
+          <span className={`privacy-toggle__track ${privacyMode ? 'privacy-toggle__track--active' : ''}`}>
+            <span className="privacy-toggle__thumb" />
+          </span>
+          <span className="privacy-toggle__label">
+            {privacyMode ? '🔒 Local' : '🌐 Cloud'}
+          </span>
         </button>
 
         {isLoaded && !isSignedIn && (

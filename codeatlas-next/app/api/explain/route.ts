@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import Groq from 'groq-sdk';
+import { ollamaChat } from '@/lib/ollama';
 
 const getSupabase = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -15,11 +16,11 @@ export async function POST(req: NextRequest) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { filename } = await req.json();
+    const { filename, privacyMode } = await req.json();
     if (!filename) return NextResponse.json({ error: 'Filename is required' }, { status: 400 });
 
     const groqKey = process.env.GROQ_API_KEY;
-    if (!groqKey) return NextResponse.json({ error: 'Missing GROQ_API_KEY' }, { status: 500 });
+    if (!privacyMode && !groqKey) return NextResponse.json({ error: 'Missing GROQ_API_KEY' }, { status: 500 });
 
     const supabase = getSupabase();
 
@@ -38,15 +39,12 @@ export async function POST(req: NextRequest) {
 
     // Reassemble the file content from chunks
     const fullContent = chunks.map(c => c.content).join('\n');
-    // Cap at ~4000 chars to stay within token limits
     const truncated = fullContent.slice(0, 4000);
 
-    const groq = new Groq({ apiKey: groqKey });
-    const completion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: 'system',
-          content: `You are CodeAtlas, a code documentation expert. Given a source file, generate a clear, structured explanation. Include:
+    const messages = [
+      {
+        role: 'system' as const,
+        content: `You are CodeAtlas, a code documentation expert. Given a source file, generate a clear, structured explanation. Include:
 1. **Purpose**: What this file does in one sentence.
 2. **Key Exports**: List the main functions, classes, or components exported.
 3. **Dependencies**: What external libraries or internal files it imports.
@@ -54,18 +52,28 @@ export async function POST(req: NextRequest) {
 5. **Notable Patterns**: Any design patterns, error handling, or edge cases worth mentioning.
 
 Keep the explanation concise but informative. Use markdown formatting.`
-        },
-        {
-          role: 'user',
-          content: `Explain this file: **${filename}**\n\n\`\`\`\n${truncated}\n\`\`\``
-        }
-      ],
-      model: 'llama-3.3-70b-versatile',
-      temperature: 0.2,
-      max_tokens: 1200,
-    });
+      },
+      {
+        role: 'user' as const,
+        content: `Explain this file: **${filename}**\n\n\`\`\`\n${truncated}\n\`\`\``
+      }
+    ];
 
-    const explanation = completion.choices[0]?.message?.content || 'No explanation generated.';
+    let explanation: string;
+
+    if (privacyMode) {
+      console.log('🔒 Privacy Mode: Explain via Ollama');
+      explanation = await ollamaChat(messages, 'llama3:8b', { temperature: 0.2, max_tokens: 1200 });
+    } else {
+      const groq = new Groq({ apiKey: groqKey! });
+      const completion = await groq.chat.completions.create({
+        messages,
+        model: 'llama-3.3-70b-versatile',
+        temperature: 0.2,
+        max_tokens: 1200,
+      });
+      explanation = completion.choices[0]?.message?.content || 'No explanation generated.';
+    }
 
     return NextResponse.json({ explanation, filename });
   } catch (err: any) {

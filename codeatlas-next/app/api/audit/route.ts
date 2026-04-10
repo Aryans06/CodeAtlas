@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { initEmbedder, embedText } from '@/lib/embedder';
 import { vectorStore } from '@/lib/vectorStore';
 import Groq from 'groq-sdk';
+import { ollamaChat } from '@/lib/ollama';
 
 // Security threat vectors to scan for
 const THREAT_VECTORS = [
@@ -21,8 +22,15 @@ export async function POST(req: NextRequest) {
 
     const hfToken = process.env.HF_TOKEN;
     const groqKey = process.env.GROQ_API_KEY;
-    if (!hfToken || !groqKey) {
-      return NextResponse.json({ error: 'Missing HF_TOKEN or GROQ_API_KEY' }, { status: 500 });
+
+    const body = await req.json().catch(() => ({}));
+    const privacyMode = body.privacyMode || false;
+
+    if (!hfToken) {
+      return NextResponse.json({ error: 'Missing HF_TOKEN' }, { status: 500 });
+    }
+    if (!privacyMode && !groqKey) {
+      return NextResponse.json({ error: 'Missing GROQ_API_KEY' }, { status: 500 });
     }
 
     initEmbedder(hfToken);
@@ -57,12 +65,10 @@ export async function POST(req: NextRequest) {
       return `--- ${f.category} ---\n${snippets}`;
     }).join('\n\n');
 
-    const groq = new Groq({ apiKey: groqKey });
-    const completion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: 'system',
-          content: `You are a senior security auditor. You will receive code snippets that were flagged by a semantic search as potentially insecure.
+    const groqMessages = [
+      {
+        role: 'system' as const,
+        content: `You are a senior security auditor. You will receive code snippets that were flagged by a semantic search as potentially insecure.
 
 Your job is to review each snippet and determine if there is an ACTUAL security vulnerability. Many snippets will be false positives — only report real issues.
 
@@ -74,19 +80,28 @@ For each REAL vulnerability found, output a JSON array entry with:
 - "description": A 1-2 sentence explanation of why this is dangerous
 - "fix": A 1-2 sentence suggestion on how to fix it
 
-Output ONLY a valid JSON array. No markdown fences.If no real issues are found, output an empty array: []`
-        },
-        {
-          role: 'user',
-          content: `Review these flagged code snippets for security vulnerabilities:\n\n${suspiciousCode}`
-        }
-      ],
-      model: 'llama-3.3-70b-versatile',
-      temperature: 0.1,
-      max_tokens: 2000,
-    });
+Output ONLY a valid JSON array. No markdown fences. If no real issues are found, output an empty array: []`
+      },
+      {
+        role: 'user' as const,
+        content: `Review these flagged code snippets for security vulnerabilities:\n\n${suspiciousCode}`
+      }
+    ];
 
-    let aiResponse = completion.choices[0]?.message?.content || '[]';
+    let aiResponse: string;
+    if (privacyMode) {
+      console.log('🔒 Privacy Mode: Audit via Ollama');
+      aiResponse = await ollamaChat(groqMessages, 'llama3:8b', { temperature: 0.1, max_tokens: 2000 });
+    } else {
+      const groq = new Groq({ apiKey: groqKey! });
+      const completion = await groq.chat.completions.create({
+        messages: groqMessages,
+        model: 'llama-3.3-70b-versatile',
+        temperature: 0.1,
+        max_tokens: 2000,
+      });
+      aiResponse = completion.choices[0]?.message?.content || '[]';
+    }
     // Clean potential markdown fences
     aiResponse = aiResponse.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
 
