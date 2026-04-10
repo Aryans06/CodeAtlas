@@ -205,6 +205,7 @@ body{font-family:var(--font-sans);background:var(--bg-primary);color:var(--text-
 .privacy-toggle__track--active .privacy-toggle__thumb{transform:translateX(14px)}
 .privacy-toggle__label{font-size:0.72rem;font-weight:500;color:var(--text-secondary);white-space:nowrap}
 
+
 @keyframes breathe{0%,100%{opacity:0.25;transform:translate(-50%,-50%) scale(1)}50%{opacity:0.55;transform:translate(-50%,-50%) scale(1.12)}}
 .chat__welcome-icon{margin-bottom:var(--space-md);position:relative;z-index:1;opacity:0.9}
 .chat__welcome-tag{font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:#ef4444;margin-bottom:10px;position:relative;z-index:1;background:rgba(239,68,68,0.1);display:inline-block;padding:3px 12px;border-radius:var(--radius-full);border:1px solid rgba(239,68,68,0.2);animation:tagPulse 3s ease-in-out infinite}
