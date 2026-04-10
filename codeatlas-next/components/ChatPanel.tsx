@@ -20,7 +20,7 @@ function formatAI(text: string) {
 interface ChatPanelProps {
   messages: Message[];
   isLoading: boolean;
-  onSendMessage: (text: string) => void;
+  onSendMessage?: (text: string) => void;
   hasCodebase: boolean;
   isReadOnly?: boolean;
   onShare?: () => void;
@@ -40,7 +40,7 @@ export default function ChatPanel({ messages, isLoading, onSendMessage, hasCodeb
   const handleSend = () => {
     const text = input.trim();
     if (!text || isLoading) return;
-    onSendMessage(text);
+    if (onSendMessage) onSendMessage(text);
     setInput('');
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
   };
@@ -153,7 +153,7 @@ export default function ChatPanel({ messages, isLoading, onSendMessage, hasCodeb
                   <button
                     key={s.text}
                     className="chat__suggestion"
-                    onClick={() => onSendMessage(s.text)}
+                    onClick={() => onSendMessage && onSendMessage(s.text)}
                   >
                     {s.icon} {s.text}
                   </button>
@@ -339,7 +339,7 @@ function LandingSections() {
             ['🧬', 'HuggingFace', 'MiniLM-L6-v2 embeddings: 384-dimensional semantic search'],
             ['🗄️', 'Supabase pgvector', 'Postgres-native vector similarity search at scale'],
             ['🔐', 'Clerk Auth', 'Enterprise-grade user authentication and multi-tenancy'],
-            ['▲', 'Next.js 15', 'Full-stack React framework with server components and edge runtime'],
+            ['▲', 'Next.js 16', 'Full-stack React framework with server components and edge runtime'],
             ['🐙', 'GitHub API', 'One-click public repo import via Git Trees API'],
           ].map(([icon, title, desc]) => (
             <div key={title as string} className="tech-card">

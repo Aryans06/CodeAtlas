@@ -93,7 +93,6 @@ export default async function SharedSnippetPage({
               <ChatPanel 
                 messages={data.messages} 
                 isLoading={false} 
-                onSendMessage={() => {}} 
                 hasCodebase={true} 
                 isReadOnly={true}
               />
