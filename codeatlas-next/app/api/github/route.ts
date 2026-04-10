@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { chunkCodebase } from '@/lib/chunker';
 import { initEmbedder, embedBatch } from '@/lib/embedder';
 import { vectorStore } from '@/lib/vectorStore';
@@ -97,16 +97,40 @@ export async function POST(req: NextRequest) {
     initEmbedder(hfToken);
     initAI(groqKey);
 
+    // Attempt to fetch GitHub OAuth Token for private repos
+    let githubToken = '';
+    try {
+      const client = await clerkClient();
+      const response = await client.users.getUserOauthAccessToken(userId, 'oauth_github');
+      if (response && response.data && response.data.length > 0) {
+        githubToken = response.data[0].token;
+        console.log('🔑 GitHub OAuth token found for user.');
+      }
+    } catch (err: any) {
+      console.log('ℹ️ No GitHub OAuth token found. Falling back to public access.');
+    }
+
+    const fetchHeaders: Record<string, string> = {
+      'Accept': 'application/vnd.github+json',
+      'User-Agent': 'CodeAtlas'
+    };
+    if (githubToken) {
+      fetchHeaders['Authorization'] = `Bearer ${githubToken}`;
+    }
+
     // Step 1: Fetch the full file tree
     const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`;
     const treeRes = await fetch(treeUrl, {
-      headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'CodeAtlas' },
+      headers: fetchHeaders,
     });
 
     if (!treeRes.ok) {
       const errText = await treeRes.text();
+      if (treeRes.status === 404 && !githubToken) {
+        return NextResponse.json({ error: `Repository not found: ${owner}/${repo}. If it is private, please link your GitHub account in Clerk settings.` }, { status: 404 });
+      }
       if (treeRes.status === 404) {
-        return NextResponse.json({ error: `Repository not found: ${owner}/${repo}. Make sure it exists and is public.` }, { status: 404 });
+        return NextResponse.json({ error: `Repository not found or access denied: ${owner}/${repo}.` }, { status: 404 });
       }
       return NextResponse.json({ error: `GitHub API error: ${treeRes.status} ${errText}` }, { status: 502 });
     }
@@ -133,7 +157,7 @@ export async function POST(req: NextRequest) {
         batch.map(async (file: any) => {
           // Use raw.githubusercontent.com for fast content downloads
           const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${file.path}`;
-          const res = await fetch(rawUrl, { headers: { 'User-Agent': 'CodeAtlas' } });
+          const res = await fetch(rawUrl, { headers: fetchHeaders });
           if (!res.ok) throw new Error(`Failed to fetch ${file.path}`);
 
           const content = await res.text();
