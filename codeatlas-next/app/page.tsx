@@ -9,6 +9,7 @@ import ContextPanel from '@/components/ContextPanel';
 import UploadModal from '@/components/UploadModal';
 import ArchModal from '@/components/ArchModal';
 import AuditModal from '@/components/AuditModal';
+import ReadmeModal from '@/components/ReadmeModal';
 import { useUser } from '@clerk/nextjs';
 import type { SessionInfo } from '@/components/Sidebar';
 
@@ -47,6 +48,7 @@ export default function Home() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [showArchModal, setShowArchModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
+  const [showReadmeModal, setShowReadmeModal] = useState(false);
   const [privacyMode, setPrivacyMode] = useState(false);
   const { isSignedIn } = useUser();
 
@@ -377,6 +379,7 @@ export default function Home() {
           onNewChat={handleNewChat}
           onSelectSession={handleSelectSession}
           onDeleteSession={handleDeleteSession}
+          onGenerateReadme={() => setShowReadmeModal(true)}
           onExplainFile={async (filepath) => {
             const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             setMessages(prev => [
@@ -442,6 +445,12 @@ export default function Home() {
         <AuditModal
           privacyMode={privacyMode}
           onClose={() => setShowAuditModal(false)}
+        />
+      )}
+      {showReadmeModal && (
+        <ReadmeModal
+          privacyMode={privacyMode}
+          onClose={() => setShowReadmeModal(false)}
         />
       )}
     </>
