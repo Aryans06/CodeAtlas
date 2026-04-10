@@ -363,6 +363,34 @@ export default function Home() {
     }
   }, [checkStatus]);
 
+  // Share snippet
+  const handleShare = useCallback(async () => {
+    if (messages.length === 0) return;
+    setIndexingMsg('🔗 Generating share link...');
+    try {
+      const res = await fetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages,
+          title: messages[0]?.content || 'Shared CodeAtlas Snippet',
+          repoName: currentRepo || 'Local Project',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.id) {
+        const shareUrl = `${window.location.origin}/share/${data.id}`;
+        await navigator.clipboard.writeText(shareUrl);
+        setIndexingMsg('✅ Link copied to clipboard!');
+      } else {
+        setIndexingMsg(`❌ ${data.error || 'Failed to share'}`);
+      }
+    } catch (err: any) {
+      setIndexingMsg(`❌ ${err.message}`);
+    }
+    setTimeout(() => setIndexingMsg(''), 4000);
+  }, [messages, currentRepo]);
+
   return (
     <>
       <AmbientBackground />
@@ -433,6 +461,7 @@ export default function Home() {
           isLoading={isLoading}
           onSendMessage={sendMessage}
           hasCodebase={isIndexed}
+          onShare={handleShare}
         />
         <ContextPanel sources={sources} />
       </main>

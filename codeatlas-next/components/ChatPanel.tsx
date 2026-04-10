@@ -22,9 +22,11 @@ interface ChatPanelProps {
   isLoading: boolean;
   onSendMessage: (text: string) => void;
   hasCodebase: boolean;
+  isReadOnly?: boolean;
+  onShare?: () => void;
 }
 
-export default function ChatPanel({ messages, isLoading, onSendMessage, hasCodebase }: ChatPanelProps) {
+export default function ChatPanel({ messages, isLoading, onSendMessage, hasCodebase, isReadOnly, onShare }: ChatPanelProps) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -62,7 +64,30 @@ export default function ChatPanel({ messages, isLoading, onSendMessage, hasCodeb
     <section className="chat" id="chatPanel">
       <div className="chat__view" id="chatView">
         <div className="chat__messages" id="chatMessages">
-          {showWelcome && (
+          {!isReadOnly && messages.length > 0 && onShare && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+              <button
+                onClick={onShare}
+                style={{
+                  background: 'var(--surface-color)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-secondary)',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+                onMouseOut={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+              >
+                🔗 Share Chat Snippet
+              </button>
+            </div>
+          )}
+          {showWelcome && !isReadOnly && (
             <div className="chat__welcome" id="chatWelcome">
               <div className="chat__welcome-glow" style={{ background: 'radial-gradient(circle, rgba(239, 68, 68, 0.15) 0%, transparent 60%)' }} />
               
@@ -140,6 +165,12 @@ export default function ChatPanel({ messages, isLoading, onSendMessage, hasCodeb
             </div>
           )}
 
+          {showWelcome && isReadOnly && (
+            <div className="chat__welcome" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
+              No messages found in this shared snippet.
+            </div>
+          )}
+
           {messages.map((msg, i) => {
             const isStreamingMsg = isLoading && msg.role === 'ai' && i === messages.length - 1;
             return (
@@ -198,32 +229,34 @@ export default function ChatPanel({ messages, isLoading, onSendMessage, hasCodeb
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="chat__input-wrapper" id="chatInputWrapper">
-          <div className="chat__input-container">
-            <textarea
-              ref={textareaRef}
-              className="chat__input"
-              id="chatInput"
-              placeholder={hasCodebase ? 'Ask anything about your codebase...' : 'Upload a codebase to start asking questions...'}
-              rows={1}
-              value={input}
-              onChange={handleInput}
-              onKeyDown={handleKeyDown}
-            />
-            <button
-              className="chat__send-btn"
-              id="sendBtn"
-              aria-label="Send message"
-              disabled={!input.trim() || isLoading}
-              onClick={handleSend}
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M14 2L7 9M14 2L10 14L7 9M14 2L2 6L7 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
+        {!isReadOnly && (
+          <div className="chat__input-wrapper" id="chatInputWrapper">
+            <div className="chat__input-container">
+              <textarea
+                ref={textareaRef}
+                className="chat__input"
+                id="chatInput"
+                placeholder={hasCodebase ? 'Ask anything about your codebase...' : 'Upload a codebase to start asking questions...'}
+                rows={1}
+                value={input}
+                onChange={handleInput}
+                onKeyDown={handleKeyDown}
+              />
+              <button
+                className="chat__send-btn"
+                id="sendBtn"
+                aria-label="Send message"
+                disabled={!input.trim() || isLoading}
+                onClick={handleSend}
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M14 2L7 9M14 2L10 14L7 9M14 2L2 6L7 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
+            <p className="chat__disclaimer">CodeAtlas may produce inaccurate responses. Always verify critical information.</p>
           </div>
-          <p className="chat__disclaimer">CodeAtlas may produce inaccurate responses. Always verify critical information.</p>
-        </div>
+        )}
       </div>
     </section>
   );
