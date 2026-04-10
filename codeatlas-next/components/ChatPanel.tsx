@@ -257,7 +257,7 @@ function LandingSections() {
           {[
             ['🔍', 'Semantic Search', 'Find code by meaning, not keywords.'],
             ['🧠', 'Context-Aware Answers', 'Responses grounded in your actual code.'],
-            ['⚡', 'Instant Onboarding', 'Understand architecture in minutes.'],
+            ['🔒', 'Local Privacy Mode', '100% local, air-gapped LLM inference using Ollama.'],
             ['🔗', 'Cross-File Tracing', 'Trace logic across files and modules.'],
             ['🛡️', 'Security Analysis', 'Identify vulnerabilities and insecure patterns.'],
             ['📊', 'Architecture Insights', 'High-level structure and dependency overviews.'],
