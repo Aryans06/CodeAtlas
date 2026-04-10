@@ -43,10 +43,11 @@ export async function POST(req: NextRequest) {
     for (const threat of THREAT_VECTORS) {
       const queryEmbedding = await embedText(threat.query);
       const results = await vectorStore.search(userId, repoName, queryEmbedding, 3);
-      // Only keep results with decent relevance
-      const relevant = results.filter((r: any) => r.score > 0.25);
-      if (relevant.length > 0) {
-        allFindings.push({ category: threat.label, chunks: relevant });
+      if (results.length > 0) {
+        console.log(`[Audit] Found ${results.length} chunks for ${threat.label}`);
+        allFindings.push({ category: threat.label, chunks: results });
+      } else {
+        console.log(`[Audit] No chunks found for ${threat.label} by RPC`);
       }
     }
 
