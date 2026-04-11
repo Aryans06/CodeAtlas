@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
-import Groq from 'groq-sdk';
+import { groqChat } from '@/lib/groqFallback';
 import { ollamaChat } from '@/lib/ollama';
 
 const getSupabase = () => {
@@ -86,7 +86,7 @@ function buildFileMap(chunks: any[]) {
 }
 
 // Generate DEPENDENCY GRAPH
-async function generateDependencyGraph(chunks: any[], groqKey: string, privacyMode = false) {
+async function generateDependencyGraph(chunks: any[], privacyMode = false) {
   const fileMap = buildFileMap(chunks);
   const fileSummaries: string[] = [];
   for (const [file, contents] of fileMap) {
@@ -123,14 +123,8 @@ CRITICAL MERMAID SYNTAX RULES:
     console.log('🔒 Privacy Mode: Visualize (dependency) via Ollama');
     mermaidCode = await ollamaChat(messages, 'llama3:8b', { temperature: 0.1, max_tokens: 2000 });
   } else {
-    const groq = new Groq({ apiKey: groqKey });
-    const completion = await groq.chat.completions.create({
-      messages,
-      model: 'llama-3.3-70b-versatile',
-      temperature: 0.1,
-      max_tokens: 2000,
-    });
-    mermaidCode = completion.choices[0]?.message?.content || '';
+    const result = await groqChat(messages, { temperature: 0.1, max_tokens: 2000 });
+    mermaidCode = result.content || '';
   }
   mermaidCode = sanitizeMermaid(mermaidCode, 'flowchart');
 
@@ -172,7 +166,7 @@ function extToLabel(ext: string): string {
 }
 
 // Generate DATA FLOW SEQUENCE DIAGRAM
-async function generateDataFlow(chunks: any[], groqKey: string, privacyMode = false) {
+async function generateDataFlow(chunks: any[], privacyMode = false) {
   const fileMap = buildFileMap(chunks);
   const fileSummaries: string[] = [];
   for (const [file, contents] of fileMap) {
@@ -208,14 +202,8 @@ CRITICAL MERMAID SYNTAX RULES:
     console.log('🔒 Privacy Mode: Visualize (dataflow) via Ollama');
     mermaidCode = await ollamaChat(messages, 'llama3:8b', { temperature: 0.2, max_tokens: 1500 });
   } else {
-    const groq = new Groq({ apiKey: groqKey });
-    const completion = await groq.chat.completions.create({
-      messages,
-      model: 'llama-3.3-70b-versatile',
-      temperature: 0.2,
-      max_tokens: 1500,
-    });
-    mermaidCode = completion.choices[0]?.message?.content || '';
+    const result = await groqChat(messages, { temperature: 0.2, max_tokens: 1500 });
+    mermaidCode = result.content || '';
   }
   mermaidCode = sanitizeMermaid(mermaidCode, 'sequence');
 
@@ -226,9 +214,6 @@ export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const groqKey = process.env.GROQ_API_KEY;
-    if (!groqKey) return NextResponse.json({ error: 'Missing GROQ_API_KEY' }, { status: 500 });
 
     const body = await req.json().catch(() => ({}));
     const type = body.type || 'dependency';
@@ -243,11 +228,11 @@ export async function POST(req: NextRequest) {
         result = generateFileDistribution(chunks);
         break;
       case 'sequence':
-        result = await generateDataFlow(chunks, groqKey, privacyMode);
+        result = await generateDataFlow(chunks, privacyMode);
         break;
       case 'dependency':
       default:
-        result = await generateDependencyGraph(chunks, groqKey, privacyMode);
+        result = await generateDependencyGraph(chunks, privacyMode);
         break;
     }
 

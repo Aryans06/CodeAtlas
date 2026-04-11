@@ -1,17 +1,14 @@
-import Groq from 'groq-sdk';
+import { groqChat, groqChatStream } from './groqFallback';
 import { ollamaChat, ollamaChatStream } from './ollama';
-
-let groq: Groq | null = null;
 
 const OLLAMA_MODEL = 'llama3:8b';
 
 export function initAI(apiKey: string) {
-  groq = new Groq({ apiKey });
-  console.log('🤖 Groq AI initialized (llama-3.3-70b-versatile)');
+  console.log('🤖 AI initialized with Groq fallback (70B → 8B)');
 }
 
 export function isAIReady(): boolean {
-  return groq !== null;
+  return !!process.env.GROQ_API_KEY;
 }
 
 interface SearchResult {
@@ -64,14 +61,8 @@ export async function generateResponse(
     console.log('🔒 Privacy Mode: using Ollama for generation');
     text = await ollamaChat(messages, OLLAMA_MODEL, { temperature: 0.2, max_tokens: 1500 });
   } else {
-    if (!groq) throw new Error('AI not initialized');
-    const chatCompletion = await groq.chat.completions.create({
-      messages,
-      model: 'llama-3.3-70b-versatile',
-      temperature: 0.2,
-      max_tokens: 1500,
-    });
-    text = chatCompletion.choices[0]?.message?.content || 'No response generated.';
+    const result = await groqChat(messages, { temperature: 0.2, max_tokens: 1500 });
+    text = result.content || 'No response generated.';
   }
 
   return { text, sources };
@@ -95,15 +86,7 @@ export async function generateStreamingResponse(
     return { stream, sources };
   }
 
-  if (!groq) throw new Error('AI not initialized');
+  const result = await groqChatStream(messages, { temperature: 0.2, max_tokens: 1500 });
 
-  const stream = await groq.chat.completions.create({
-    messages,
-    model: 'llama-3.3-70b-versatile',
-    temperature: 0.2,
-    max_tokens: 1500,
-    stream: true,
-  });
-
-  return { stream, sources };
+  return { stream: result.stream, sources };
 }

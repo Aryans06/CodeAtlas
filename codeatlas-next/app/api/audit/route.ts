@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { initEmbedder, embedText } from '@/lib/embedder';
 import { vectorStore } from '@/lib/vectorStore';
-import Groq from 'groq-sdk';
+import { groqChat } from '@/lib/groqFallback';
 import { ollamaChat } from '@/lib/ollama';
 
 // Security threat vectors to scan for
@@ -95,14 +95,8 @@ Output ONLY a valid JSON array. No markdown fences. If no real issues are found,
       console.log('🔒 Privacy Mode: Audit via Ollama');
       aiResponse = await ollamaChat(groqMessages, 'llama3:8b', { temperature: 0.1, max_tokens: 2000 });
     } else {
-      const groq = new Groq({ apiKey: groqKey! });
-      const completion = await groq.chat.completions.create({
-        messages: groqMessages,
-        model: 'llama-3.3-70b-versatile',
-        temperature: 0.1,
-        max_tokens: 2000,
-      });
-      aiResponse = completion.choices[0]?.message?.content || '[]';
+      const result = await groqChat(groqMessages, { temperature: 0.1, max_tokens: 2000 });
+      aiResponse = result.content || '[]';
     }
     // Clean potential markdown fences
     aiResponse = aiResponse.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();

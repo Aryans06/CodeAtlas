@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
-import Groq from 'groq-sdk';
+import { groqChat } from '@/lib/groqFallback';
 import { ollamaChat } from '@/lib/ollama';
 
 const getSupabase = () => {
@@ -66,14 +66,8 @@ Keep the explanation concise but informative. Use markdown formatting.`
       console.log('🔒 Privacy Mode: Explain via Ollama');
       explanation = await ollamaChat(messages, 'llama3:8b', { temperature: 0.2, max_tokens: 1200 });
     } else {
-      const groq = new Groq({ apiKey: groqKey! });
-      const completion = await groq.chat.completions.create({
-        messages,
-        model: 'llama-3.3-70b-versatile',
-        temperature: 0.2,
-        max_tokens: 1200,
-      });
-      explanation = completion.choices[0]?.message?.content || 'No explanation generated.';
+      const result = await groqChat(messages, { temperature: 0.2, max_tokens: 1200 });
+      explanation = result.content || 'No explanation generated.';
     }
 
     return NextResponse.json({ explanation, filename });

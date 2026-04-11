@@ -80,18 +80,16 @@ Format the output strictly as Markdown. Do not wrap the response in a markdown c
       });
     } else {
 
-      const { Groq } = await import('groq-sdk');
-      const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-      const stream = await groq.chat.completions.create({
-        messages: [{ role: 'user', content: prompt }],
-        model: 'llama-3.3-70b-versatile',
-        stream: true,
-      });
+      const { groqChatStream } = await import('@/lib/groqFallback');
+      const result = await groqChatStream(
+        messages as any,
+        { temperature: 0.2, max_tokens: 2000 }
+      );
 
       const readableStream = new ReadableStream({
         async start(controller) {
           const encoder = new TextEncoder();
-          for await (const chunk of stream) {
+          for await (const chunk of result.stream) {
             const token = chunk.choices[0]?.delta?.content || '';
             if (token) {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ token })}\n\n`));
