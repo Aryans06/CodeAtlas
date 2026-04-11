@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
     const supabase = getSupabase();
 
-    // Fetch all chunks for this specific file
+
     const { data: chunks, error } = await supabase
       .from('code_chunks')
       .select('content, start_line, end_line')
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `File "${filename}" not found in indexed codebase.` }, { status: 404 });
     }
 
-    // Reassemble the file content from chunks
+
     const fullContent = chunks.map(c => c.content).join('\n');
     const truncated = fullContent.slice(0, 4000);
 

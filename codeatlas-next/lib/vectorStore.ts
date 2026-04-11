@@ -43,8 +43,7 @@ export const vectorStore = {
 
     if (rows.length === 0) return;
 
-    // Supabase can bulk insert max ~1000 rows at a time comfortably. Batching might be needed if massive.
-    // For safety, let's insert chunks in batches of 500
+
     const BATCH_SIZE = 500;
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       const batch = rows.slice(i, i + BATCH_SIZE);
@@ -63,7 +62,7 @@ export const vectorStore = {
     
     const { data, error } = await supabase.rpc('match_code_chunks', {
       query_embedding: queryEmbedding,
-      match_threshold: 0.1, // accept anything above 10% similarity
+      match_threshold: 0.1,
       match_count: topK,
       p_user_id: userId,
       p_repo_name: repoName || 'default'
@@ -74,7 +73,7 @@ export const vectorStore = {
       throw new Error(`DB RPC Error: ${error.message}`);
     }
 
-    // Structure matching existing expectations: Array of { chunk: { content, metadata... }, score }
+
     return (data || []).map((row: any) => ({
       chunk: {
         content: row.content,
@@ -90,7 +89,7 @@ export const vectorStore = {
 
   async clear(userId: string, repoName: string) {
     const supabase = getSupabase();
-    // Only delete chunks for this user AND this specific repository
+
     const { error } = await supabase.from('code_chunks').delete().eq('user_id', userId).eq('repo_name', repoName);
     if (error) {
       console.error('Supabase Delete Error:', error);
@@ -102,7 +101,7 @@ export const vectorStore = {
   async getStatus(userId: string, currentRepoUrlQuery?: string) {
     const supabase = getSupabase();
 
-    // 1. Fetch available repositories
+
     const { data: reposData, error: reposError } = await supabase
       .from('code_chunks')
       .select('repo_name')
@@ -115,12 +114,12 @@ export const vectorStore = {
       return { isIndexed: false, totalChunks: 0, files: [], availableRepos: [], currentRepo: null };
     }
 
-    // Determine target repo: whatever was passed in, or default to the first one available
+
     const targetRepo = currentRepoUrlQuery && availableRepos.includes(currentRepoUrlQuery)
       ? currentRepoUrlQuery
       : availableRepos[0];
 
-    // 2. Fetch data specifically for the target repo
+
     const { data: fileData, error: fileError } = await supabase
       .from('code_chunks')
       .select('file')
@@ -129,7 +128,7 @@ export const vectorStore = {
 
     if (fileError) throw new Error(`DB Status Error: ${fileError.message}`);
     
-    // De-duplicate the files since there are multiple chunks per file
+
     const uniqueFiles = Array.from(new Set((fileData || []).map(d => d.file)));
 
     return {

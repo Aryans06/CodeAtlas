@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
     initEmbedder(hfToken);
     initAI(groqKey);
 
-    // Attempt to fetch GitHub OAuth Token for private repos
+
     let githubToken = '';
     try {
       const client = await clerkClient();
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
       fetchHeaders['Authorization'] = `Bearer ${githubToken}`;
     }
 
-    // Step 1: Fetch the full file tree
+
     const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`;
     const treeRes = await fetch(treeUrl, {
       headers: fetchHeaders,
@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No indexable source files found in this repository.' }, { status: 400 });
     }
 
-    // Step 2: Fetch file contents in parallel batches
+
     const BATCH = 20; // Fetch 20 files at a time to avoid rate limits
     const fileData: { filename: string; content: string }[] = [];
     let skipped = 0;
@@ -183,7 +183,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Could not fetch any file contents from this repository.' }, { status: 400 });
     }
 
-    // Step 3: Chunk, embed, store — reusing existing pipeline
+
     const chunks = chunkCodebase(fileData);
     console.log(`🧩 Chunked into ${chunks.length} chunks`);
 
@@ -193,7 +193,7 @@ export async function POST(req: NextRequest) {
     console.log(`🗑️ Clearing previous index for ${repoName}...`);
     await vectorStore.clear(userId, repoName);
 
-    // Embed (this is the slow part)
+
     console.log(`🔢 Starting embedding of ${chunks.length} chunks (5 in parallel)...`);
     const texts = chunks.map((c: any) => `File: ${c.metadata.file}\n${c.content}`);
     const embeddings = await embedBatch(texts);

@@ -11,7 +11,7 @@ export function isEmbedderReady(): boolean {
   return hf !== null;
 }
 
-// Embed a single text → returns number[]
+
 export async function embedText(text: string): Promise<number[]> {
   if (!hf) throw new Error('Embedder not initialized');
 
@@ -26,14 +26,14 @@ export async function embedText(text: string): Promise<number[]> {
   return response as number[];
 }
 
-// Embed multiple texts in parallel batches for speed
+
 export async function embedBatch(
   texts: string[],
   onProgress?: (done: number, total: number) => void
 ): Promise<{ index: number; embedding: number[] | null }[]> {
   const results: { index: number; embedding: number[] | null }[] = [];
   
-  // Send 25 at a time concurrently to HuggingFace
+
   const BATCH_SIZE = 25; 
 
   for (let i = 0; i < texts.length; i += BATCH_SIZE) {
@@ -56,7 +56,7 @@ export async function embedBatch(
       }
     }
 
-    // A tiny delay to be polite to HF Rate Limits
+
     if (i + BATCH_SIZE < texts.length) await sleep(100);
 
     const done = Math.min(i + BATCH_SIZE, texts.length);

@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     indexingState.progress = 0;
     indexingState.message = 'Reading files...';
 
-    // Read and filter files
+
     const fileData: { filename: string; content: string }[] = [];
     let totalSize = 0;
     let skipped = 0;
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
     console.log(`✅ Read ${fileData.length} files (skipped ${skipped})`);
     indexingState.message = `Chunking ${fileData.length} files...`;
 
-    // Chunk the codebase
+
     const chunks = chunkCodebase(fileData);
     indexingState.total = chunks.length;
     indexingState.message = `Embedding ${chunks.length} chunks...`;
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
     // Drop existing vector entries for this user & repo before uploading fresh codebase
     await vectorStore.clear(userId, repoName);
 
-    // Embed with retry logic
+
     const texts = chunks.map((c: any) => `File: ${c.metadata.file}\n${c.content}`);
     const embeddings = await embedBatch(texts, (done: number, total: number) => {
       indexingState.progress = done;

@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
     initEmbedder(hfToken);
 
-    // Step 1: For each threat vector, do a semantic search
+
     console.log('🛡️ Security Audit: Scanning for vulnerabilities...');
     const allFindings: { category: string; chunks: any[] }[] = [];
 
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Step 2: Send the suspicious chunks to AI for analysis
+
     const suspiciousCode = allFindings.map(f => {
       const snippets = f.chunks.map((c: any) =>
         `File: ${c.chunk.metadata.file} (L${c.chunk.metadata.startLine}-${c.chunk.metadata.endLine})\n${c.chunk.content.slice(0, 500)}`

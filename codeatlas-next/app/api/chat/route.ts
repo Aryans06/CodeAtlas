@@ -46,16 +46,16 @@ export async function POST(req: NextRequest) {
 
     console.log(`\n💬 Question: "${question}"`);
 
-    // Embed the question
+
     const queryEmbedding = await embedText(question);
 
-    // Search for relevant code chunks in the specific repo
+
     const results = await vectorStore.search(userId, repoName, queryEmbedding, 5);
     console.log(
       `🔍 Found ${results.length} chunks (top: ${((results[0]?.score ?? 0) * 100).toFixed(1)}%)`
     );
 
-    // Generate streaming AI response
+
     const { stream: aiStream, sources } = await generateStreamingResponse(question, results, privacyMode);
 
     // Create a ReadableStream that pipes Groq tokens as Server-Sent Events
