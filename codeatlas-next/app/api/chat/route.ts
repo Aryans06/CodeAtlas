@@ -54,8 +54,7 @@ export async function POST(req: NextRequest) {
     console.log(
       `🔍 Found ${results.length} chunks (top: ${((results[0]?.score ?? 0) * 100).toFixed(1)}%)`
     );
-
-
+    // Bust next.js module cache so vectorStore.ts changes apply
     const { stream: aiStream, sources } = await generateStreamingResponse(question, results, privacyMode);
 
     // Create a ReadableStream that pipes Groq tokens as Server-Sent Events

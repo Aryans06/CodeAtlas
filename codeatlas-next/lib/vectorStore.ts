@@ -74,6 +74,11 @@ export const vectorStore = {
     }
 
 
+    if (data && data.length > 0) {
+      console.log('Returned RPC columns:', Object.keys(data[0]));
+      console.log('Sample RPC row:', data[0]);
+    }
+
     return (data || []).map((row: any) => ({
       chunk: {
         content: row.content,
@@ -83,7 +88,7 @@ export const vectorStore = {
           endLine: row.end_line
         }
       },
-      score: row.similarity ?? row.score ?? 0
+      score: row.similarity ?? row.score ?? row.match_score ?? row.dist ?? 0
     }));
   },
 

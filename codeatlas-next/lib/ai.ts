@@ -38,13 +38,17 @@ If the answer is missing from context, do not try to guess.`
         content: `CODE CONTEXT:\n${context}\n\nUSER QUESTION: ${question}`
       }
     ],
-    sources: relevantChunks.map(r => ({
-      file: r.chunk.metadata.file,
-      startLine: r.chunk.metadata.startLine,
-      endLine: r.chunk.metadata.endLine,
-      score: r.score,
-      preview: r.chunk.content.slice(0, 200),
-    })),
+    sources: relevantChunks.map(r => {
+      const s = {
+        file: r.chunk.metadata.file,
+        startLine: r.chunk.metadata.startLine,
+        endLine: r.chunk.metadata.endLine,
+        score: r.score,
+        preview: r.chunk.content.slice(0, 200),
+      };
+      console.log('API mapping source:', s.file, 'with score:', s.score);
+      return s;
+    }),
   };
 }
 
