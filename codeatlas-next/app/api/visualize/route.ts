@@ -11,15 +11,64 @@ const getSupabase = () => {
   return createClient(url, key);
 };
 
-// Fetch chunks helper
-async function fetchChunks(userId: string) {
+function sanitizeMermaid(code: string, type: 'flowchart' | 'sequence' | 'pie'): string {
+  let cleaned = code
+    .replace(/^```mermaid\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+
+  if (type === 'sequence') {
+    // Fix invalid dotted async arrows: -.->> → -.->  and  -..->> → -..->  
+    cleaned = cleaned.replace(/-\.->>/g, '-.->');
+    cleaned = cleaned.replace(/-\.\.->/g, '-.->');
+    cleaned = cleaned.replace(/-->>>/g, '-->>');
+    // Strip activate/deactivate — causes mismatched pair errors
+    cleaned = cleaned.replace(/^\s*(activate|deactivate)\s+.*$/gm, '');
+    // Fix labels with special chars that break parsing
+    cleaned = cleaned.replace(/:\s*([^\n]*[<>{}][^\n]*)/g, (_, label) => {
+      return ': ' + label.replace(/[<>{}]/g, '');
+    });
+    if (!cleaned.startsWith('sequenceDiagram')) {
+      cleaned = 'sequenceDiagram\n' + cleaned;
+    }
+  }
+
+  if (type === 'flowchart') {
+    // Fix -->|label|> → -->|label|  (trailing > after pipe)
+    cleaned = cleaned.replace(/\|>\s/g, '| ');
+    cleaned = cleaned.replace(/\|>$/gm, '|');
+    // Remove curly braces in subgraphs (AI loves adding them)
+    cleaned = cleaned.replace(/\{/g, '').replace(/\}/g, '');
+    // Fix dotted arrows that are invalid in flowcharts
+    cleaned = cleaned.replace(/-\.->>/g, '-.->');
+    cleaned = cleaned.replace(/-\.\.->/g, '-.->');
+    // Fix double-arrow syntax
+    cleaned = cleaned.replace(/={3,}>/g, '==>');
+    cleaned = cleaned.replace(/--{3,}>/g, '-->');
+    if (!cleaned.startsWith('graph') && !cleaned.startsWith('flowchart')) {
+      cleaned = 'graph TD\n' + cleaned;
+    }
+  }
+
+  // Universal: strip blank lines that can cause parse issues
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
+
+  return cleaned;
+}
+
+async function fetchChunks(userId: string, repoName: string) {
   const supabase = getSupabase();
-  const { data: chunks, error } = await supabase
+  let query = supabase
     .from('code_chunks')
     .select('file, content, start_line')
-    .eq('user_id', userId)
-    .order('file')
-    .order('start_line');
+    .eq('user_id', userId);
+
+  if (repoName) {
+    query = query.eq('repo_name', repoName);
+  }
+
+  const { data: chunks, error } = await query.order('file').order('start_line');
 
   if (error) throw new Error(`DB Error: ${error.message}`);
   if (!chunks || chunks.length === 0) throw new Error('No codebase indexed. Upload files first.');
@@ -83,17 +132,7 @@ CRITICAL MERMAID SYNTAX RULES:
     });
     mermaidCode = completion.choices[0]?.message?.content || '';
   }
-  mermaidCode = mermaidCode.replace(/^```mermaid\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-  // Fix common AI syntax errors:
-  // 1. -->|label|> should be -->|label|  (remove trailing >)
-  mermaidCode = mermaidCode.replace(/\|>\s/g, '| ');
-  mermaidCode = mermaidCode.replace(/\|>$/gm, '|');
-  // 2. Remove curly braces in subgraphs
-  mermaidCode = mermaidCode.replace(/\{/g, '').replace(/\}/g, '');
-  // 3. Ensure graph declaration
-  if (!mermaidCode.startsWith('graph') && !mermaidCode.startsWith('flowchart')) {
-    mermaidCode = 'graph TD\n' + mermaidCode;
-  }
+  mermaidCode = sanitizeMermaid(mermaidCode, 'flowchart');
 
   return { mermaid: mermaidCode, fileCount: fileList.length };
 }
@@ -178,12 +217,7 @@ CRITICAL MERMAID SYNTAX RULES:
     });
     mermaidCode = completion.choices[0]?.message?.content || '';
   }
-  mermaidCode = mermaidCode.replace(/^```mermaid\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-  // Strip activate/deactivate lines — they cause mismatched pair errors
-  mermaidCode = mermaidCode.replace(/^\s*(activate|deactivate)\s+.*$/gm, '').trim();
-  if (!mermaidCode.startsWith('sequenceDiagram')) {
-    mermaidCode = 'sequenceDiagram\n' + mermaidCode;
-  }
+  mermaidCode = sanitizeMermaid(mermaidCode, 'sequence');
 
   return { mermaid: mermaidCode, fileCount: fileList.length };
 }
@@ -199,8 +233,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const type = body.type || 'dependency';
     const privacyMode = body.privacyMode || false;
+    const repoName = body.repoName || 'default';
 
-    const chunks = await fetchChunks(userId);
+    const chunks = await fetchChunks(userId, repoName);
 
     let result;
     switch (type) {

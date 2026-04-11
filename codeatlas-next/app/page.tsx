@@ -391,6 +391,32 @@ export default function Home() {
     setTimeout(() => setIndexingMsg(''), 4000);
   }, [messages, currentRepo]);
 
+  const handleDeleteWorkspace = useCallback(async (repoName: string) => {
+    const confirmed = confirm(`Are you sure you want to delete the workspace "${repoName}"?\n\nThis will permanently remove all indexed code chunks for this repository.`);
+    if (!confirmed) return;
+
+    setIndexingMsg(`🗑️ Deleting ${repoName}...`);
+    try {
+      const res = await fetch('/api/workspace', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repoName }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setIndexingMsg(`✅ Deleted workspace: ${repoName}`);
+        setMessages([]);
+        setSources([]);
+        await checkStatus();
+      } else {
+        setIndexingMsg(`❌ ${data.error}`);
+      }
+    } catch (err: any) {
+      setIndexingMsg(`❌ ${err.message}`);
+    }
+    setTimeout(() => setIndexingMsg(''), 4000);
+  }, [checkStatus]);
+
   return (
     <>
       <AmbientBackground />
@@ -407,6 +433,7 @@ export default function Home() {
         currentRepo={currentRepo}
         availableRepos={availableRepos}
         onSelectRepo={(repo) => checkStatus(repo)}
+        onDeleteWorkspace={handleDeleteWorkspace}
       />
       <main className="app" id="app">
         <Sidebar 
@@ -476,6 +503,7 @@ export default function Home() {
         <ArchModal
           fileCount={0}
           privacyMode={privacyMode}
+          repoName={currentRepo}
           onClose={() => setShowArchModal(false)}
         />
       )}

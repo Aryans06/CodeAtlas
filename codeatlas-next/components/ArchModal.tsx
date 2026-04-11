@@ -19,10 +19,11 @@ const TABS: TabInfo[] = [
 interface ArchModalProps {
   fileCount: number;
   privacyMode?: boolean;
+  repoName?: string | null;
   onClose: () => void;
 }
 
-export default function ArchModal({ fileCount, privacyMode, onClose }: ArchModalProps) {
+export default function ArchModal({ fileCount, privacyMode, repoName, onClose }: ArchModalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   const [renderError, setRenderError] = useState('');
@@ -47,7 +48,7 @@ export default function ArchModal({ fileCount, privacyMode, onClose }: ArchModal
       const res = await fetch('/api/visualize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, privacyMode }),
+        body: JSON.stringify({ type, privacyMode, repoName }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -278,6 +279,16 @@ export default function ArchModal({ fileCount, privacyMode, onClose }: ArchModal
               }}>
                 {renderError}
               </pre>
+              <button
+                onClick={() => {
+                  delete cacheRef.current[activeTab];
+                  fetchDiagram(activeTab);
+                }}
+                className="btn btn--primary"
+                style={{ marginTop: '16px', fontSize: '0.8rem', padding: '8px 20px' }}
+              >
+                🔄 Regenerate Diagram
+              </button>
               <p style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', marginTop: '12px' }}>
                 You can still copy the raw Mermaid code and paste it into{' '}
                 <a href="https://mermaid.live" target="_blank" rel="noreferrer" style={{ color: '#fb7185' }}>

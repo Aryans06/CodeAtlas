@@ -14,9 +14,10 @@ interface NavbarProps {
   availableRepos: string[];
   currentRepo: string | null;
   onSelectRepo: (repo: string) => void;
+  onDeleteWorkspace: (repo: string) => void;
 }
 
-export default function Navbar({ theme, onToggleTheme, onUploadClick, onVisualizeClick, onAuditClick, privacyMode, onTogglePrivacy, indexingMsg, isIndexed, availableRepos, currentRepo, onSelectRepo }: NavbarProps) {
+export default function Navbar({ theme, onToggleTheme, onUploadClick, onVisualizeClick, onAuditClick, privacyMode, onTogglePrivacy, indexingMsg, isIndexed, availableRepos, currentRepo, onSelectRepo, onDeleteWorkspace }: NavbarProps) {
   const { isLoaded, isSignedIn } = useUser();
 
   return (
@@ -47,7 +48,7 @@ export default function Navbar({ theme, onToggleTheme, onUploadClick, onVisualiz
       </div>
       <div className="navbar__right">
         {availableRepos && availableRepos.length > 0 && (
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginRight: '8px' }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginRight: '8px', gap: '4px' }}>
             <select 
               value={currentRepo || ''} 
               onChange={(e) => onSelectRepo(e.target.value)}
@@ -67,6 +68,26 @@ export default function Navbar({ theme, onToggleTheme, onUploadClick, onVisualiz
                 <option key={repo} value={repo}>{repo}</option>
               ))}
             </select>
+            <button
+              onClick={() => currentRepo && onDeleteWorkspace(currentRepo)}
+              title={`Delete workspace: ${currentRepo}`}
+              style={{
+                background: 'transparent',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                borderRadius: '6px',
+                color: '#ef4444',
+                cursor: 'pointer',
+                padding: '5px 6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M3 4H13M5 4V3C5 2.45 5.45 2 6 2H10C10.55 2 11 2.45 11 3V4M6 7V11M10 7V11M4 4V13C4 13.55 4.45 14 5 14H11C11.55 14 12 13.55 12 13V4" stroke="currentColor" strokeWidth="1.2" />
+              </svg>
+            </button>
           </div>
         )}
         {isIndexed && (
