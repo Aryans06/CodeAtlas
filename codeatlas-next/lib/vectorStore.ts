@@ -83,7 +83,7 @@ export const vectorStore = {
           endLine: row.end_line
         }
       },
-      score: row.score
+      score: row.similarity ?? row.score ?? 0
     }));
   },
 

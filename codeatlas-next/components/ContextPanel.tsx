@@ -72,7 +72,7 @@ export default function ContextPanel({ sources }: ContextPanelProps) {
                     color: scoreColor(src.score),
                     border: `1px solid ${scoreColor(src.score)}30`,
                   }}>
-                    {(src.score * 100).toFixed(0)}% {scoreLabel(src.score)}
+                    {(((src.score || 0)) * 100).toFixed(0)}% {scoreLabel(src.score || 0)}
                   </span>
                 </div>
               </div>
