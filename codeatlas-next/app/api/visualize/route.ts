@@ -19,9 +19,9 @@ function sanitizeMermaid(code: string, type: 'flowchart' | 'sequence' | 'pie'): 
     .trim();
 
   if (type === 'sequence') {
-    // Fix invalid dotted async arrows: -.->> → -.->  and  -..->> → -..->  
-    cleaned = cleaned.replace(/-\.->>/g, '-.->');
-    cleaned = cleaned.replace(/-\.\.->/g, '-.->');
+    // Fix invalid dotted async arrows
+    cleaned = cleaned.replace(/-\.->>/g, '-.->')
+    cleaned = cleaned.replace(/-\.\.->/g, '-.->')
     cleaned = cleaned.replace(/-->>>/g, '-->>');
     // Strip activate/deactivate — causes mismatched pair errors
     cleaned = cleaned.replace(/^\s*(activate|deactivate)\s+.*$/gm, '');
@@ -46,6 +46,35 @@ function sanitizeMermaid(code: string, type: 'flowchart' | 'sequence' | 'pie'): 
     // Fix double-arrow syntax
     cleaned = cleaned.replace(/={3,}>/g, '==>');
     cleaned = cleaned.replace(/--{3,}>/g, '-->');
+
+    // Line-by-line: fix node definitions with problematic labels
+    cleaned = cleaned.split('\n').map(line => {
+      // Match node definitions like: C6["sentry.server.config.1.js"]
+      // but NOT lines that are pure arrows or subgraph keywords
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('graph') || trimmed.startsWith('flowchart') || 
+          trimmed.startsWith('subgraph') || trimmed === 'end' || trimmed.startsWith('%%')) {
+        return line;
+      }
+
+      // Fix node IDs that contain dots (e.g. C6.1 breaks Mermaid) — replace dots in IDs with underscores
+      // Pattern: a word-like ID followed by a bracket/paren, where the ID has dots
+      line = line.replace(/\b([A-Za-z_]\w*(?:\.\w+)+)(\s*[\[(\{])/g, (_, id, bracket) => {
+        return id.replace(/\./g, '_') + bracket;
+      });
+
+      // Fix bracket labels: ensure content inside [...] is properly quoted
+      line = line.replace(/\[([^\]]*)\]/g, (match, inner) => {
+        // Skip if it's a pipe label like |text|
+        if (inner === '') return match;
+        const text = inner.replace(/["']/g, '').trim();
+        if (!text) return match;
+        return `["${text}"]`;
+      });
+
+      return line;
+    }).join('\n');
+
     if (!cleaned.startsWith('graph') && !cleaned.startsWith('flowchart')) {
       cleaned = 'graph TD\n' + cleaned;
     }
@@ -99,18 +128,34 @@ async function generateDependencyGraph(chunks: any[], privacyMode = false) {
   const messages = [
     {
       role: 'system' as const,
-      content: `You are a software architecture expert. Given a list of source files and their import statements, generate a Mermaid.js flowchart diagram showing the dependency/architecture graph.
+      content: `You are a software architecture expert. Generate a Mermaid.js flowchart showing the dependency graph of a codebase.
 
-CRITICAL MERMAID SYNTAX RULES:
-1. Output ONLY valid Mermaid syntax. Start with "graph TD". No markdown fences.
-2. ABSOLUTELY NO CURLY BRACES "{ }" for subgraphs. You MUST use the "end" keyword.
-3. Example of GOOD syntax:
-   subgraph Lib
-     node_id["lib.ts"]
-   end
-4. Show arrows from importing file → imported file (e.g., A -->|uses| B).
-5. Quote filenames with extensions in node definitions like: A["file.ts"]
-6. Keep it clean — focus only on the most important architectural connections.`
+STRICT RULES — FOLLOW EXACTLY:
+1. Start with: graph TD
+2. No markdown fences. No explanation. Output ONLY valid Mermaid.
+3. Use SIMPLE node IDs: A, B, C, D1, D2, etc. NEVER use dots, slashes, or special characters in IDs.
+4. Put filenames ONLY inside square bracket labels with double quotes.
+5. For subgraphs, use the "end" keyword. NEVER use curly braces.
+
+CORRECT EXAMPLE:
+graph TD
+  subgraph API
+    A1["api/chat/route.ts"]
+    A2["api/upload/route.ts"]
+  end
+  subgraph Lib
+    L1["lib/ai.ts"]
+    L2["lib/vectorStore.ts"]
+  end
+  A1 -->|uses| L1
+  A1 -->|queries| L2
+  A2 -->|indexes| L2
+
+WRONG (NEVER DO THIS):
+  sentry.server.config["sentry.server.config.ts"]
+  lib/ai["lib/ai.ts"]
+
+Keep it clean — show only the 15-20 most important files and their connections.`
     },
     {
       role: 'user' as const,
@@ -126,7 +171,10 @@ CRITICAL MERMAID SYNTAX RULES:
     const result = await groqChat(messages, { temperature: 0.1, max_tokens: 2000 });
     mermaidCode = result.content || '';
   }
+
+  console.log('🔍 RAW Mermaid (dependency):\n', mermaidCode.slice(0, 500));
   mermaidCode = sanitizeMermaid(mermaidCode, 'flowchart');
+  console.log('✅ SANITIZED Mermaid (dependency):\n', mermaidCode.slice(0, 500));
 
   return { mermaid: mermaidCode, fileCount: fileList.length };
 }

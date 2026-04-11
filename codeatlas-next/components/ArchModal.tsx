@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 
-type DiagramType = 'dependency' | 'pie' | 'sequence';
+type DiagramType = 'pie' | 'sequence';
 
 interface TabInfo {
   id: DiagramType;
@@ -11,7 +11,6 @@ interface TabInfo {
 }
 
 const TABS: TabInfo[] = [
-  { id: 'dependency', label: 'Dependencies', icon: '🔗', desc: 'Import & module dependency graph' },
   { id: 'pie', label: 'File Distribution', icon: '📊', desc: 'Language breakdown across your codebase' },
   { id: 'sequence', label: 'Data Flow', icon: '🔄', desc: 'Request lifecycle sequence diagram' },
 ];
@@ -27,7 +26,7 @@ export default function ArchModal({ fileCount, privacyMode, repoName, onClose }:
   const containerRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   const [renderError, setRenderError] = useState('');
-  const [activeTab, setActiveTab] = useState<DiagramType>('dependency');
+  const [activeTab, setActiveTab] = useState<DiagramType>('pie');
   const [isLoading, setIsLoading] = useState(false);
   const [mermaidCode, setMermaidCode] = useState('');
   // Cache diagrams so we don't refetch on tab switch
@@ -73,6 +72,33 @@ export default function ArchModal({ fileCount, privacyMode, repoName, onClose }:
   useEffect(() => {
     if (!mermaidCode || !containerRef.current) return;
 
+    // Client-side safety net: fix common AI-generated Mermaid issues
+    function sanitizeClient(code: string): string {
+      let s = code
+        .replace(/^```mermaid\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim();
+
+      // Fix node IDs with dots (e.g. C6.1) → C6_1
+      s = s.replace(/\b([A-Za-z_]\w*(?:\.\w+)+)(\s*[\[(])/g, (_, id, br) =>
+        id.replace(/\./g, '_') + br
+      );
+
+      // Fix bracket labels: strip stray quotes and re-wrap cleanly
+      s = s.replace(/\[([^\]]+)\]/g, (_, inner) => {
+        const text = inner.replace(/["']/g, '').trim();
+        return text ? `["${text}"]` : `["${inner}"]`;
+      });
+
+      // Remove curly braces (AI loves them for subgraphs)
+      if (s.startsWith('graph') || s.startsWith('flowchart')) {
+        s = s.replace(/\{/g, '').replace(/\}/g, '');
+      }
+
+      return s;
+    }
+
     const renderDiagram = async () => {
       try {
         const mermaid = (await import('mermaid')).default;
@@ -110,9 +136,9 @@ export default function ArchModal({ fileCount, privacyMode, repoName, onClose }:
         });
 
         containerRef.current!.innerHTML = '';
-        // unique id per render to avoid mermaid caching issues
         const id = `arch-${activeTab}-${Date.now()}`;
-        const { svg } = await mermaid.render(id, mermaidCode);
+        const sanitized = sanitizeClient(mermaidCode);
+        const { svg } = await mermaid.render(id, sanitized);
         containerRef.current!.innerHTML = svg;
         setRenderError('');
       } catch (err: any) {
